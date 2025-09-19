@@ -14,5 +14,7 @@ module.exports = {
   coverageDirectory: 'coverage',
   coverageReporters: ['text', 'lcov', 'html'],
   testTimeout: 30000,
-  verbose: true
+  verbose: true,
+  maxWorkers: 1, // Run tests sequentially to avoid database conflicts
+  forceExit: true // Force exit after tests complete
 };

@@ -196,108 +196,104 @@ class TestHelpers {
   }
 
   static async createTestOrder(orderData = {}) {
-    // Create vendor and fare first if not provided or if provided IDs don't exist
-    let vendor = null;
-    if (orderData.vendorId) {
-      vendor = await prisma.vendor.findUnique({ where: { id: orderData.vendorId } });
-    }
-    if (!vendor) {
-      vendor = await this.createTestVendor();
-    }
+    // Use a transaction to ensure all dependencies are created atomically
+    return await prisma.$transaction(async (tx) => {
+      // Create vendor
+      const vendor = await tx.vendor.create({
+        data: {
+          email: `vendor-${Date.now()}-${Math.random().toString(36).substr(2, 9)}@example.com`,
+          name: 'Test Vendor',
+          phone: '+977-1-1234567',
+          address: 'Test Address',
+          city: 'Kathmandu',
+          state: 'Bagmati',
+          country: 'Nepal',
+          postalCode: '44600',
+          isActive: true
+        }
+      });
 
-    let fare = null;
-    if (orderData.fareId) {
-      fare = await prisma.fare.findUnique({ where: { id: orderData.fareId } });
-    }
-    if (!fare) {
-      fare = await this.createTestFare({ toCity: orderData.deliveryCity || 'Kathmandu' });
-    }
+      // Create user
+      const user = await tx.user.create({
+        data: {
+          email: `user-${Date.now()}-${Math.random().toString(36).substr(2, 9)}@example.com`,
+          password: await bcrypt.hash('password123', 10),
+          name: 'Test User',
+          role: 'USER'
+        }
+      });
 
-    let user = null;
-    if (orderData.userId) {
-      user = await prisma.user.findUnique({ where: { id: orderData.userId } });
-    }
-    if (!user) {
-      user = await this.createTestUser();
-    }
+      // Create fare with unique route
+      const randomSuffix = Math.random().toString(36).substr(2, 5);
+      const fare = await tx.fare.create({
+        data: {
+          fromCity: `Pokhara-${randomSuffix}`,
+          toCity: orderData.deliveryCity ? `${orderData.deliveryCity}-${randomSuffix}` : `Kathmandu-${randomSuffix}`,
+          doorDelivery: 1000.00,
+          branchDelivery: 500.00,
+          codBranch: 750.00,
+          isActive: true
+        }
+      });
 
-    const defaultOrder = {
-      orderNumber: `ORD-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`,
-      vendorId: vendor.id,
-      userId: user.id,
-      status: 'PENDING',
-      deliveryCity: orderData.deliveryCity || fare.toCity,
-      deliveryAddress: 'Test Delivery Address',
-      contactNumber: '+977-98-1234567',
-      name: 'Test Customer',
-      alternateContactNumber: '+977-98-7654321',
-      amountToBeCollected: 5000.00,
-      deliveryType: 'DOOR_DELIVERY',
-      fareId: fare.id,
-      productWeight: 2.5,
-      productType: 'Electronics',
-      totalAmount: 15000.00,
-      notes: 'Test order notes'
-    };
+      // Create order
+      const defaultOrder = {
+        orderNumber: `ORD-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`,
+        vendorId: vendor.id,
+        userId: user.id,
+        status: 'PENDING',
+        deliveryCity: orderData.deliveryCity || fare.toCity,
+        deliveryAddress: 'Test Delivery Address',
+        contactNumber: '+977-98-1234567',
+        name: 'Test Customer',
+        alternateContactNumber: '+977-98-7654321',
+        amountToBeCollected: 5000.00,
+        deliveryType: 'DOOR_DELIVERY',
+        fareId: fare.id,
+        productWeight: 2.5,
+        productType: 'Electronics',
+        totalAmount: 15000.00,
+        notes: 'Test order notes'
+      };
 
-    // Ensure all required IDs are valid
-    if (!vendor || !vendor.id) {
-      throw new Error('Vendor is required but not found');
-    }
-    if (!user || !user.id) {
-      throw new Error('User is required but not found');
-    }
-    if (!fare || !fare.id) {
-      throw new Error('Fare is required but not found');
-    }
-
-    try {
-      return await prisma.order.create({
+      return await tx.order.create({
         data: { ...defaultOrder, ...orderData }
       });
-    } catch (error) {
-      if (error.code === 'P2002') {
-        // Unique constraint violation, try to find the existing order
-        const existingOrder = await prisma.order.findFirst({
-          where: {
-            orderNumber: defaultOrder.orderNumber
-          }
-        });
-        return existingOrder;
-      }
-      throw error;
-    }
+    });
   }
 
   static async createTestShipment(shipmentData = {}) {
-    // Create order and warehouse first if not provided or if provided IDs don't exist
-    let order = null;
-    if (shipmentData.orderId) {
-      order = await prisma.order.findUnique({ where: { id: shipmentData.orderId } });
-    }
-    if (!order) {
-      order = await this.createTestOrder();
-    }
+    // Use a transaction to ensure all dependencies are created atomically
+    return await prisma.$transaction(async (tx) => {
+      // Create order with all its dependencies
+      const order = await this.createTestOrder();
+      
+      // Create warehouse
+      const warehouse = await tx.warehouse.create({
+        data: {
+          name: 'Test Warehouse',
+          address: 'Test Warehouse Address',
+          city: 'Kathmandu',
+          state: 'Bagmati',
+          country: 'Nepal',
+          postalCode: '44600',
+          capacity: 1000,
+          isActive: true
+        }
+      });
 
-    let warehouse = null;
-    if (shipmentData.warehouseId) {
-      warehouse = await prisma.warehouse.findUnique({ where: { id: shipmentData.warehouseId } });
-    }
-    if (!warehouse) {
-      warehouse = await this.createTestWarehouse();
-    }
+      const defaultShipment = {
+        orderId: order.id,
+        warehouseId: warehouse.id,
+        trackingNumber: `TRK-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`,
+        status: 'PREPARING',
+        estimatedDelivery: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days from now
+        notes: 'Test shipment notes'
+      };
 
-    const defaultShipment = {
-      orderId: order.id,
-      warehouseId: warehouse.id,
-      trackingNumber: `TRK-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`,
-      status: 'PREPARING',
-      estimatedDelivery: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days from now
-      notes: 'Test shipment notes'
-    };
-
-    return await prisma.shipment.create({
-      data: { ...defaultShipment, ...shipmentData }
+      return await tx.shipment.create({
+        data: { ...defaultShipment, ...shipmentData }
+      });
     });
   }
 

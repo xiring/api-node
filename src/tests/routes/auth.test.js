@@ -15,6 +15,26 @@ describe('Authentication Routes', () => {
     await prisma.user.deleteMany();
   });
 
+  beforeAll(async () => {
+    // Clean up any existing data before starting the test suite
+    await prisma.shipment.deleteMany();
+    await prisma.order.deleteMany();
+    await prisma.warehouse.deleteMany();
+    await prisma.vendor.deleteMany();
+    await prisma.fare.deleteMany();
+    await prisma.user.deleteMany();
+  });
+
+  afterAll(async () => {
+    // Clean up after the entire test suite
+    await prisma.shipment.deleteMany();
+    await prisma.order.deleteMany();
+    await prisma.warehouse.deleteMany();
+    await prisma.vendor.deleteMany();
+    await prisma.fare.deleteMany();
+    await prisma.user.deleteMany();
+  });
+
   describe('POST /api/auth/register', () => {
     it('should register a new user successfully', async () => {
       const userData = {
@@ -121,8 +141,21 @@ describe('Authentication Routes', () => {
     });
 
     it('should login user successfully', async () => {
+      // First create a user to login with
+      const userData = {
+        name: 'Test User',
+        email: 'testlogin@example.com',
+        password: 'password123',
+        role: USER_ROLES.USER
+      };
+
+      await request(app)
+        .post('/api/auth/register')
+        .send(userData)
+        .expect(201);
+
       const loginData = {
-        email: 'test@example.com',
+        email: 'testlogin@example.com',
         password: 'password123'
       };
 
