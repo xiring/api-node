@@ -6,12 +6,14 @@ A comprehensive backend API for logistics management built with Node.js, Express
 
 - **User Management**: Authentication and role-based access control (Admin, Manager, User)
 - **Warehouse Management**: CRUD operations for warehouse locations
-- **Product Management**: Product catalog with SKU tracking
-- **Customer Management**: Customer information and order history
+- **Vendor Management**: Vendor information and order processing
 - **Order Management**: Order processing and status tracking
 - **Shipment Management**: Shipment tracking and delivery management
-- **Inventory Management**: Real-time inventory tracking across warehouses
-- **Security**: JWT authentication, rate limiting, input validation
+- **Fare Management**: Shipping fare calculation and management
+- **Caching System**: Redis-based response caching with tag-based invalidation
+- **Email Queue**: Asynchronous email processing with BullMQ
+- **Enhanced Security**: SQL injection prevention, rate limiting, input validation, security headers
+- **Database Optimization**: Deadlock prevention and connection pooling
 - **API Documentation**: Comprehensive API endpoints with examples
 
 ## 🛠 Tech Stack
@@ -20,15 +22,19 @@ A comprehensive backend API for logistics management built with Node.js, Express
 - **Framework**: Express.js
 - **Database**: PostgreSQL
 - **ORM**: Prisma
+- **Caching**: Redis with cache-manager
+- **Queue**: BullMQ for job processing
+- **Email**: Nodemailer
 - **Authentication**: JWT (jsonwebtoken)
 - **Validation**: Joi
-- **Security**: Helmet, CORS, Rate Limiting
-- **Logging**: Morgan
+- **Security**: Helmet, CORS, Rate Limiting, Input Sanitization
+- **Logging**: Morgan, Custom Security Logger
 
 ## 📋 Prerequisites
 
 - Node.js (v16 or higher)
 - PostgreSQL (v12 or higher)
+- Redis (v6 or higher) - for caching and queue
 - npm or yarn
 
 ## 🚀 Quick Start
@@ -47,10 +53,27 @@ npm install
 # Copy the example environment file
 cp env.example .env
 
-# Edit .env with your database credentials
+# Edit .env with your configuration
 DATABASE_URL="postgresql://username@localhost:5432/logistics_db"
 JWT_SECRET="your-super-secret-jwt-key-here"
 PORT=3000
+
+# Redis Configuration
+REDIS_HOST=localhost
+REDIS_PORT=6379
+REDIS_PASSWORD=
+REDIS_DB=0
+
+# Email Configuration
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=your-email@gmail.com
+SMTP_PASS=your-app-password
+FROM_EMAIL=noreply@ecommerce.com
+FRONTEND_URL=http://localhost:3001
+
+# CORS
+ALLOWED_ORIGINS=http://localhost:3000,http://localhost:3001
 ```
 
 ### 3. Database Setup
@@ -66,7 +89,18 @@ npm run db:push
 npm run db:seed
 ```
 
-### 4. Start the Server
+### 4. Start Redis (Required for caching and email queue)
+
+```bash
+# Using Docker
+docker run -d -p 6379:6379 redis:alpine
+
+# Or install Redis locally
+# macOS: brew install redis && brew services start redis
+# Ubuntu: sudo apt install redis-server && sudo systemctl start redis
+```
+
+### 5. Start the Server
 
 ```bash
 # Development mode
@@ -78,12 +112,74 @@ npm start
 
 The API will be available at `http://localhost:3000`
 
-### 📚 API Documentation
+## 🆕 New Features
+
+### 🚀 Caching System
+
+The API now includes a comprehensive Redis-based caching system:
+
+- **Automatic Response Caching**: GET requests are automatically cached
+- **Tag-based Invalidation**: Smart cache invalidation by business logic tags
+- **Flexible TTL**: Configurable cache expiration times
+- **Cache Headers**: X-Cache, X-Cache-Key headers for debugging
+
+**Example Usage:**
+```javascript
+// Cache GET requests for 30 minutes
+router.get('/', CacheMiddleware.cache(1800), controller.getAll);
+
+// Cache with tags for easy invalidation
+router.get('/', CacheMiddleware.cacheWithTags(['warehouses'], 1800), controller.getAll);
+router.post('/', CacheMiddleware.invalidateByTags(['warehouses']), controller.create);
+```
+
+### 📧 Email Queue System
+
+Asynchronous email processing with BullMQ:
+
+- **Non-blocking Email Sending**: Emails are processed in background
+- **Job Retry Logic**: Automatic retry on failures
+- **Queue Monitoring**: Real-time queue status and job tracking
+- **Scalable**: Can handle high email volumes
+
+**Example Usage:**
+```javascript
+// Add email to queue
+await QueueService.addEmailJob(
+  'user@example.com',
+  'Welcome!',
+  '<h1>Welcome to our service!</h1>',
+  'Welcome to our service!'
+);
+```
+
+### 🔒 Enhanced Security
+
+Enterprise-grade security features:
+
+- **SQL Injection Prevention**: Input sanitization and parameterized queries
+- **XSS Protection**: Content Security Policy and input validation
+- **Rate Limiting**: Multi-tier rate limiting (general, auth-specific, speed limiting)
+- **Password Security**: Strong password requirements with bcrypt hashing
+- **Security Headers**: Helmet.js with comprehensive security headers
+- **Security Logging**: Detailed audit trails and security event logging
+
+### ⚡ Database Optimization
+
+Performance and reliability improvements:
+
+- **Deadlock Prevention**: Retry logic with exponential backoff
+- **Connection Pooling**: Optimized database connections
+- **Query Optimization**: Efficient database operations
+
+## 📚 API Documentation
 
 Once the server is running, you can access the interactive API documentation:
 
 - **Swagger UI**: `http://localhost:3000/api-docs`
 - **API Health Check**: `http://localhost:3000/api/health`
+- **Security Monitoring**: `http://localhost:3000/api/security/health`
+- **Queue Monitoring**: `http://localhost:3000/api/queue/status`
 - **Root Endpoint**: `http://localhost:3000/`
 
 ### Base URL
@@ -117,7 +213,7 @@ curl -X POST http://localhost:3000/api/auth/register \
   -d '{
     "name": "John Doe",
     "email": "john@example.com",
-    "password": "password123",
+    "password": "Password123!",
     "role": "USER"
   }'
 ```
@@ -128,19 +224,20 @@ curl -X POST http://localhost:3000/api/auth/login \
   -H "Content-Type: application/json" \
   -d '{
     "email": "john@example.com",
-    "password": "password123"
+    "password": "Password123!"
   }'
 ```
 
 #### 🏢 Warehouses (`/api/warehouses`)
 
-| Method | Endpoint | Description | Auth Required | Role Required |
-|--------|----------|-------------|---------------|---------------|
-| GET | `/` | Get all warehouses | Yes | Any |
-| GET | `/:id` | Get warehouse by ID | Yes | Any |
-| POST | `/` | Create warehouse | Yes | Admin/Manager |
-| PUT | `/:id` | Update warehouse | Yes | Admin/Manager |
-| DELETE | `/:id` | Delete warehouse | Yes | Admin |
+| Method | Endpoint | Description | Auth Required | Role Required | Cached |
+|--------|----------|-------------|---------------|---------------|--------|
+| GET | `/` | Get all warehouses | Yes | Any | ✅ (30min) |
+| GET | `/:id` | Get warehouse by ID | Yes | Any | ✅ (1hr) |
+| POST | `/` | Create warehouse | Yes | Admin/Manager | ❌ |
+| PUT | `/:id` | Update warehouse | Yes | Admin/Manager | ❌ |
+| DELETE | `/:id` | Delete warehouse | Yes | Admin | ❌ |
+| GET | `/city/:city` | Get warehouses by city | Yes | Any | ✅ (30min) |
 
 **Create Warehouse Example:**
 ```bash
@@ -158,41 +255,16 @@ curl -X POST http://localhost:3000/api/warehouses \
   }'
 ```
 
-#### 📦 Products (`/api/products`)
+#### 🏪 Vendors (`/api/vendors`)
 
 | Method | Endpoint | Description | Auth Required | Role Required |
 |--------|----------|-------------|---------------|---------------|
-| GET | `/` | Get all products | Yes | Any |
-| GET | `/:id` | Get product by ID | Yes | Any |
-| POST | `/` | Create product | Yes | Admin/Manager |
-| PUT | `/:id` | Update product | Yes | Admin/Manager |
-| DELETE | `/:id` | Delete product | Yes | Admin |
-
-**Create Product Example:**
-```bash
-curl -X POST http://localhost:3000/api/products \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer <token>" \
-  -d '{
-    "name": "Wireless Headphones",
-    "description": "High-quality wireless headphones",
-    "sku": "HEADPHONES-001",
-    "category": "Electronics",
-    "weight": 0.3,
-    "dimensions": {"length": 20, "width": 15, "height": 8},
-    "unitPrice": 199.99
-  }'
-```
-
-#### 👥 Customers (`/api/customers`)
-
-| Method | Endpoint | Description | Auth Required | Role Required |
-|--------|----------|-------------|---------------|---------------|
-| GET | `/` | Get all customers | Yes | Any |
-| GET | `/:id` | Get customer by ID | Yes | Any |
-| POST | `/` | Create customer | Yes | Admin/Manager |
-| PUT | `/:id` | Update customer | Yes | Admin/Manager |
-| DELETE | `/:id` | Delete customer | Yes | Admin |
+| GET | `/` | Get all vendors | Yes | Any |
+| GET | `/:id` | Get vendor by ID | Yes | Any |
+| POST | `/` | Create vendor | Yes | Admin/Manager |
+| PUT | `/:id` | Update vendor | Yes | Admin/Manager |
+| DELETE | `/:id` | Delete vendor | Yes | Admin |
+| GET | `/city/:city` | Get vendors by city | Yes | Any |
 
 #### 📋 Orders (`/api/orders`)
 
@@ -210,15 +282,12 @@ curl -X POST http://localhost:3000/api/orders \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer <token>" \
   -d '{
-    "customerId": "customer-id",
-    "notes": "Rush delivery",
-    "orderItems": [
-      {
-        "productId": "product-id",
-        "quantity": 2,
-        "unitPrice": 99.99
-      }
-    ]
+    "vendorId": "vendor-id",
+    "deliveryCity": "Kathmandu",
+    "deliveryAddress": "123 Main St",
+    "deliveryType": "DOOR_DELIVERY",
+    "paymentMethod": "CASH_ON_DELIVERY",
+    "notes": "Rush delivery"
   }'
 ```
 
@@ -231,7 +300,7 @@ curl -X POST http://localhost:3000/api/orders \
 | POST | `/` | Create shipment | Yes | Admin/Manager |
 | PUT | `/:id` | Update shipment | Yes | Admin/Manager |
 | DELETE | `/:id` | Delete shipment | Yes | Admin |
-| GET | `/track/:trackingNumber` | Track shipment | No | Public |
+| GET | `/tracking/:trackingNumber` | Track shipment | No | Public |
 
 **Create Shipment Example:**
 ```bash
@@ -248,27 +317,34 @@ curl -X POST http://localhost:3000/api/shipments \
   }'
 ```
 
-#### 📊 Inventory (`/api/inventory`)
+#### 💰 Fares (`/api/fares`)
 
 | Method | Endpoint | Description | Auth Required | Role Required |
 |--------|----------|-------------|---------------|---------------|
-| GET | `/` | Get all inventory | Yes | Any |
-| GET | `/:id` | Get inventory by ID | Yes | Any |
-| POST | `/` | Create inventory record | Yes | Admin/Manager |
-| PUT | `/:id` | Update inventory record | Yes | Admin/Manager |
-| DELETE | `/:id` | Delete inventory record | Yes | Admin |
-| POST | `/:id/adjust` | Adjust inventory quantity | Yes | Admin/Manager |
+| GET | `/` | Get all fares | Yes | Any |
+| GET | `/:id` | Get fare by ID | Yes | Any |
+| POST | `/` | Create fare | Yes | Admin/Manager |
+| PUT | `/:id` | Update fare | Yes | Admin/Manager |
+| DELETE | `/:id` | Delete fare | Yes | Admin |
+| GET | `/route/:fromCity/:toCity` | Get fare by route | Yes | Any |
 
-**Adjust Inventory Example:**
-```bash
-curl -X POST http://localhost:3000/api/inventory/inventory-id/adjust \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer <token>" \
-  -d '{
-    "adjustment": -5,
-    "reason": "Order fulfillment"
-  }'
-```
+#### 🔒 Security (`/api/security`)
+
+| Method | Endpoint | Description | Auth Required | Role Required |
+|--------|----------|-------------|---------------|---------------|
+| GET | `/health` | Security health check | Yes | Admin |
+| GET | `/metrics` | Security metrics | Yes | Admin |
+| GET | `/logs` | Security logs | Yes | Admin |
+| POST | `/cleanup` | Cleanup old logs | Yes | Admin |
+| GET | `/config` | Security configuration | Yes | Admin |
+
+#### 📧 Queue (`/api/queue`)
+
+| Method | Endpoint | Description | Auth Required | Role Required |
+|--------|----------|-------------|---------------|---------------|
+| GET | `/status` | Queue status | Yes | Admin |
+| GET | `/jobs` | Queue jobs | Yes | Admin |
+| POST | `/clear` | Clear queue | Yes | Admin |
 
 ### Query Parameters
 
@@ -279,21 +355,21 @@ Most GET endpoints support pagination and filtering:
 - `search`: Search term for text fields
 - `isActive`: Filter by active status (true/false)
 - `status`: Filter by specific status
-- `warehouseId`: Filter by warehouse
-- `customerId`: Filter by customer
-- `lowStock`: Show only low stock items (inventory)
+- `city`: Filter by city
+- `deliveryType`: Filter by delivery type (orders)
+- `carrier`: Filter by carrier (shipments)
 
 **Example:**
 ```bash
-GET /api/products?page=1&limit=20&search=laptop&category=Electronics
-GET /api/orders?status=PENDING&customerId=customer-123
-GET /api/inventory?warehouseId=warehouse-1&lowStock=true
+GET /api/warehouses?page=1&limit=20&search=hub&city=Boston
+GET /api/orders?status=PENDING&deliveryCity=Kathmandu
+GET /api/shipments?carrier=UPS&status=IN_TRANSIT
 ```
 
 ## 🔐 User Roles
 
 - **ADMIN**: Full access to all operations
-- **MANAGER**: Can manage warehouses, products, customers, orders, shipments, and inventory
+- **MANAGER**: Can manage warehouses, vendors, orders, shipments, and fares
 - **USER**: Can view all data and create orders
 
 ## 📊 Database Schema
@@ -302,12 +378,10 @@ The system uses the following main entities:
 
 - **Users**: System users with role-based access
 - **Warehouses**: Physical storage locations
-- **Products**: Product catalog with SKU tracking
-- **Customers**: Customer information
-- **Orders**: Customer orders with items
-- **OrderItems**: Individual items within orders
+- **Vendors**: Vendor information and order processing
+- **Orders**: Customer orders with delivery information
 - **Shipments**: Shipment tracking and delivery
-- **Inventory**: Stock levels across warehouses
+- **Fares**: Shipping fare calculation and management
 
 ## 🚀 Deployment
 
@@ -325,6 +399,25 @@ JWT_EXPIRES_IN="7d"
 PORT=3000
 NODE_ENV="production"
 
+# Redis Configuration
+REDIS_HOST=localhost
+REDIS_PORT=6379
+REDIS_PASSWORD=
+REDIS_DB=0
+CACHE_PREFIX=ecommerce_api
+
+# Email Configuration
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_SECURE=false
+SMTP_USER=your-email@gmail.com
+SMTP_PASS=your-app-password
+FROM_EMAIL=noreply@ecommerce.com
+FRONTEND_URL=http://localhost:3001
+
+# CORS
+ALLOWED_ORIGINS=http://localhost:3000,http://localhost:3001
+
 # Rate Limiting
 RATE_LIMIT_WINDOW_MS=900000
 RATE_LIMIT_MAX_REQUESTS=100
@@ -333,17 +426,30 @@ RATE_LIMIT_MAX_REQUESTS=100
 ### Production Setup
 
 1. Set up PostgreSQL database
-2. Configure environment variables
-3. Run database migrations: `npm run db:push`
-4. Start the server: `npm start`
+2. Set up Redis server
+3. Configure environment variables
+4. Run database migrations: `npm run db:push`
+5. Start the server: `npm start`
 
 ## 🧪 Testing
 
-The API includes sample data seeded by default. Use these credentials for testing:
+The API includes comprehensive test coverage with 111 passing tests:
 
-- **Admin**: admin@logistics.com / admin123
-- **Manager**: manager@logistics.com / manager123
-- **User**: user@logistics.com / user123
+```bash
+# Run all tests
+npm test
+
+# Run specific test file
+npm test -- src/tests/routes/warehouses.test.js
+
+# Run with coverage
+npm run test:coverage
+```
+
+**Test Credentials:**
+- **Admin**: admin@logistics.com / Password123!
+- **Manager**: manager@logistics.com / Password123!
+- **User**: user@logistics.com / Password123!
 
 ## 📝 API Response Format
 
@@ -366,12 +472,21 @@ All API responses follow this format:
 }
 ```
 
+**Cached Response Headers:**
+```
+X-Cache: HIT|MISS
+X-Cache-Key: req:1234567890
+X-Cache-Tags: warehouses,products
+```
+
 ## 🔧 Development
 
 ### Available Scripts
 
 - `npm start`: Start production server
 - `npm run dev`: Start development server with nodemon
+- `npm test`: Run test suite
+- `npm run test:coverage`: Run tests with coverage
 - `npm run db:generate`: Generate Prisma client
 - `npm run db:push`: Push schema changes to database
 - `npm run db:migrate`: Create and run migrations
@@ -382,12 +497,50 @@ All API responses follow this format:
 ```
 src/
 ├── config/          # Configuration files
+│   ├── index.js     # Main configuration
+│   ├── redis.js     # Redis configuration
+│   └── test.js      # Test configuration
 ├── controllers/     # Route controllers
 ├── middleware/      # Custom middleware
+│   ├── auth.js      # Authentication middleware
+│   ├── cache.js     # Caching middleware
+│   └── security.js  # Security middleware
 ├── routes/          # API routes
-├── seed.js          # Database seeding
+│   ├── auth.js      # Authentication routes
+│   ├── warehouses.js # Warehouse routes
+│   ├── vendors.js   # Vendor routes
+│   ├── orders.js    # Order routes
+│   ├── shipments.js # Shipment routes
+│   ├── fares.js     # Fare routes
+│   ├── security.js  # Security monitoring routes
+│   └── queue.js     # Queue monitoring routes
+├── services/        # Business logic services
+│   ├── AuthService.js      # Authentication service
+│   ├── CacheService.js     # Caching service
+│   ├── EmailService.js     # Email service
+│   └── QueueService.js     # Queue service
+├── utils/           # Utility functions
+│   ├── passwordSecurity.js # Password security
+│   ├── securityLogger.js   # Security logging
+│   └── databaseOptimization.js # Database optimization
+├── tests/           # Test files
+├── examples/        # Usage examples
 └── server.js        # Main server file
 ```
+
+## 🆕 Recent Updates
+
+### v2.0.0 - Enterprise Features
+- ✅ Redis-based caching system with tag invalidation
+- ✅ BullMQ email queue for asynchronous processing
+- ✅ Enhanced security with SQL injection prevention
+- ✅ Strong password requirements and validation
+- ✅ Multi-tier rate limiting and speed limiting
+- ✅ Security headers and CSP protection
+- ✅ Database optimization with deadlock prevention
+- ✅ Comprehensive security logging and monitoring
+- ✅ Queue monitoring and management endpoints
+- ✅ Test configuration for development
 
 ## 🤝 Contributing
 
