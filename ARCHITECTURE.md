@@ -4,6 +4,175 @@
 
 This project follows a modular architecture pattern with clean separation of concerns, implementing industry best practices for maintainability, scalability, and testability.
 
+## Diagrams (Mermaid)
+
+### ERD (Entity Relationship Diagram)
+
+```mermaid
+erDiagram
+  User ||--o{ Order : "assigned"
+  User ||--o{ Shipment : "assigned"
+  Vendor ||--o{ Order : "places"
+  Fare ||--o{ Order : "priced_by"
+  Warehouse ||--o{ Shipment : "handles"
+  Order ||--o{ Shipment : "generates"
+
+  User {
+    string id PK
+    string email
+    string password
+    string name
+    enum role "ADMIN|MANAGER|USER"
+    datetime createdAt
+    datetime updatedAt
+  }
+
+  Vendor {
+    string id PK
+    string name
+    string email
+    string phone
+    string address
+    string city
+    string state
+    string country
+    string postalCode
+    boolean isActive
+    datetime createdAt
+    datetime updatedAt
+  }
+
+  Warehouse {
+    string id PK
+    string name
+    string address
+    string city
+    string state
+    string country
+    string postalCode
+    int capacity
+    boolean isActive
+    datetime createdAt
+    datetime updatedAt
+  }
+
+  Fare {
+    string id PK
+    string fromCity
+    string toCity
+    float branchDelivery
+    float codBranch
+    float doorDelivery
+    boolean isActive
+    datetime createdAt
+    datetime updatedAt
+  }
+
+  Order {
+    string id PK
+    string orderNumber UNIQUE
+    string vendorId FK
+    string userId FK "nullable"
+    enum status "PENDING|CONFIRMED|PROCESSING|SHIPPED|DELIVERED|CANCELLED|RETURNED"
+    string deliveryCity
+    string deliveryAddress
+    string contactNumber
+    string name
+    string alternateContactNumber "nullable"
+    float amountToBeCollected "nullable"
+    enum deliveryType "BRANCH_DELIVERY|COD_BRANCH|DOOR_DELIVERY"
+    string fareId FK
+    float productWeight
+    string productType
+    float totalAmount
+    string notes "nullable"
+    datetime createdAt
+    datetime updatedAt
+  }
+
+  Shipment {
+    string id PK
+    string trackingNumber UNIQUE
+    string orderId FK
+    string warehouseId FK
+    string userId FK "nullable"
+    enum status "PREPARING|PICKED_UP|IN_TRANSIT|OUT_FOR_DELIVERY|DELIVERED|FAILED_DELIVERY|RETURNED"
+    string carrier "nullable"
+    string trackingUrl "nullable"
+    datetime estimatedDelivery "nullable"
+    datetime actualDelivery "nullable"
+    float weight "nullable"
+    json dimensions "nullable"
+    string notes "nullable"
+    datetime createdAt
+    datetime updatedAt
+  }
+```
+
+### ARD (Architecture/Runtime Diagram)
+
+```mermaid
+flowchart LR
+  subgraph Client
+    FE[Frontend / API Consumers]
+  end
+
+  FE -->|HTTP| GW[Express App]
+
+  subgraph Middleware
+    SEC[Security: Helmet/CORS/CSP]
+    AUTH[Auth: JWT, RBAC]
+    RATE[Rate & Speed Limits]
+    VAL[Validation: Joi]
+  end
+
+  GW --> SEC --> AUTH --> RATE --> VAL --> RT[Routes]
+
+  subgraph Routes
+    RAuth[/auth/*/]
+    ROrders[/orders/*/]
+    RShipments[/shipments/*/]
+    RFares[/fares/*/]
+    RVendors[/vendors/*/]
+    RWarehouses[/warehouses/*/]
+    RSecurity[/security/*/]
+    RQueue[/queue/*/]
+    RReports[/reports/*/]
+    RDashboard[/dashboard/*/]
+  end
+
+  RT --> CTRL[Controllers]
+  CTRL --> SRV[Services]
+
+  subgraph Services
+    SAuth[AuthService]
+    SOrder[OrderService]
+    SShipment[ShipmentService]
+    SFare[FareService]
+    SVendor[VendorService]
+    SWarehouse[WarehouseService]
+    SCache[CacheService]
+    SEmail[EmailService]
+    SQueue[QueueService]
+    SReport[ReportService]
+    SDash[DashboardService]
+  end
+
+  SRV --> REPO[Repositories]
+  REPO --> DB[(PostgreSQL via Prisma)]
+
+  SRV --> REDIS[(Redis)]
+  SQueue -->|Bull Jobs| REDIS
+  SQueue -->|ReportExport| FILES[(reports/ CSV files)]
+  SEmail --> SMTP[(SMTP Provider)]
+
+  subgraph Docs
+    SWAG[Swagger UI]
+  end
+
+  GW --> SWAG
+```
+
 ## Project Structure
 
 ```
