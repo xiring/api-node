@@ -242,6 +242,10 @@ await QueueService.addEmailJob(
 );
 ```
 
+Development email uses MailHog:
+- Run: `docker run -d -p 1025:1025 -p 8025:8025 mailhog/mailhog`
+- UI: `http://localhost:8025`
+
 ### 🔒 Enhanced Security
 
 Enterprise-grade security features:

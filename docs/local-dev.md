@@ -24,6 +24,16 @@ npm run test:setup
 npm run test
 ```
 
+## MailHog (Dev Email)
+```bash
+# Start MailHog (Docker)
+docker run -d -p 1025:1025 -p 8025:8025 mailhog/mailhog
+
+# Web UI
+open http://localhost:8025
+```
+Emails sent in development are captured by MailHog using MAILHOG_HOST/MAILHOG_PORT.
+
 ## Useful Scripts
 - `npm run db:generate` – Prisma client
 - `npm run db:push` – Apply schema

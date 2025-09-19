@@ -13,7 +13,7 @@ class EmailService {
     try {
       // Create transporter based on environment
       if (process.env.NODE_ENV === 'production') {
-        this.transporter = nodemailer.createTransporter({
+        this.transporter = nodemailer.createTransport({
           host: process.env.SMTP_HOST,
           port: process.env.SMTP_PORT || 587,
           secure: process.env.SMTP_SECURE === 'true',
@@ -26,14 +26,11 @@ class EmailService {
           }
         });
       } else {
-        // Use Ethereal for development
-        this.transporter = nodemailer.createTransporter({
-          host: 'smtp.ethereal.email',
-          port: 587,
-          auth: {
-            user: 'ethereal.user@ethereal.email',
-            pass: 'ethereal.pass'
-          }
+        // Use MailHog for development
+        this.transporter = nodemailer.createTransport({
+          host: process.env.MAILHOG_HOST || 'localhost',
+          port: parseInt(process.env.MAILHOG_PORT || '1025', 10),
+          secure: false
         });
       }
 

@@ -2,7 +2,7 @@
 let NodeSDK;
 let getNodeAutoInstrumentations;
 let Resource;
-let SemanticResourceAttributes;
+let SEMRESATTRS_SERVICE_NAME;
 
 let sdk;
 
@@ -14,18 +14,25 @@ async function initOtel() {
     ({ NodeSDK } = require('@opentelemetry/sdk-node'));
     ({ getNodeAutoInstrumentations } = require('@opentelemetry/auto-instrumentations-node'));
     ({ Resource } = require('@opentelemetry/resources'));
-    ({ SemanticResourceAttributes } = require('@opentelemetry/semantic-conventions'));
+    ({ SEMRESATTRS_SERVICE_NAME } = require('@opentelemetry/semantic-conventions'));
   } catch (e) {
     console.warn('OpenTelemetry not enabled: missing packages. Install @opentelemetry/sdk-node and auto-instrumentations.');
     return null;
   }
 
-  sdk = new NodeSDK({
-    resource: new Resource({
-      [SemanticResourceAttributes.SERVICE_NAME]: process.env.OTEL_SERVICE_NAME || 'api-node',
-    }),
-    instrumentations: [getNodeAutoInstrumentations()],
-  });
+  const sdkConfig = { instrumentations: [getNodeAutoInstrumentations()] };
+  try {
+    if (Resource) {
+      const serviceNameKey = SEMRESATTRS_SERVICE_NAME || 'service.name';
+      sdkConfig.resource = new Resource({
+        [serviceNameKey]: process.env.OTEL_SERVICE_NAME || 'api-node',
+      });
+    }
+  } catch (_) {
+    // If Resource ctor not available, skip custom resource
+  }
+
+  sdk = new NodeSDK(sdkConfig);
   await sdk.start();
   return sdk;
 }
