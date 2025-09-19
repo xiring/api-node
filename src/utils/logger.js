@@ -34,14 +34,15 @@ const format = winston.format.combine(
   )
 );
 
-// Define transports
+// Define transports (date-stamped files)
+const dateStamp = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
 const transports = [
   new winston.transports.Console(),
   new winston.transports.File({
-    filename: 'logs/error.log',
+    filename: `logs/${dateStamp}-error.log`,
     level: 'error',
   }),
-  new winston.transports.File({ filename: 'logs/combined.log' }),
+  new winston.transports.File({ filename: `logs/${dateStamp}-combined.log` }),
 ];
 
 // Create logger

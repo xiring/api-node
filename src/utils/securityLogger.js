@@ -28,7 +28,8 @@ class SecurityLogger {
     
     // Get log file path
     const logDir = path.join(__dirname, '../../logs');
-    const securityLogFile = path.join(logDir, 'security.log');
+    const today = new Date().toISOString().slice(0, 10);
+    const securityLogFile = path.join(logDir, `${today}-security.log`);
     
     // Ensure log directory exists
     if (!fs.existsSync(logDir)) {
@@ -61,7 +62,8 @@ class SecurityLogger {
     
     // Get log file path
     const logDir = path.join(__dirname, '../../logs');
-    const auditLogFile = path.join(logDir, 'audit.log');
+    const today = new Date().toISOString().slice(0, 10);
+    const auditLogFile = path.join(logDir, `${today}-audit.log`);
     
     // Ensure log directory exists
     if (!fs.existsSync(logDir)) {
