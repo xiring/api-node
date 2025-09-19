@@ -57,6 +57,7 @@ describe('Authentication Routes', () => {
         role: userData.role
       });
       expect(response.body.data.token).toBeDefined();
+      expect(response.body.data.refreshToken).toBeDefined();
       expect(response.body.data.user.password).toBeUndefined();
     });
 
@@ -170,6 +171,7 @@ describe('Authentication Routes', () => {
         email: loginData.email
       });
       expect(response.body.data.token).toBeDefined();
+      expect(response.body.data.refreshToken).toBeDefined();
     });
 
     it('should return 401 for invalid credentials', async () => {
@@ -236,6 +238,61 @@ describe('Authentication Routes', () => {
       const response = await request(app)
         .get('/api/auth/profile')
         .set('Authorization', 'Bearer invalid-token')
+        .expect(401);
+
+      expect(response.body.success).toBe(false);
+    });
+  });
+
+  describe('POST /api/auth/refresh', () => {
+    it('should refresh access token and rotate refresh token', async () => {
+      const userData = {
+        name: 'Refresh User',
+        email: 'refresh@example.com',
+        password: 'Password123!',
+        role: USER_ROLES.USER
+      };
+
+      const registerRes = await request(app)
+        .post('/api/auth/register')
+        .send(userData)
+        .expect(201);
+
+      const oldRefresh = registerRes.body.data.refreshToken;
+      expect(oldRefresh).toBeDefined();
+
+      const refreshRes = await request(app)
+        .post('/api/auth/refresh')
+        .send({ refreshToken: oldRefresh })
+        .expect(200);
+
+      expect(refreshRes.body.success).toBe(true);
+      expect(refreshRes.body.message).toBe('Token refreshed successfully');
+      expect(refreshRes.body.data.token).toBeDefined();
+      expect(refreshRes.body.data.refreshToken).toBeDefined();
+      expect(refreshRes.body.data.refreshToken).not.toBe(oldRefresh);
+
+      // Using old refresh token again should fail since it was rotated
+      await request(app)
+        .post('/api/auth/refresh')
+        .send({ refreshToken: oldRefresh })
+        .expect(401);
+    });
+
+    it('should return 400 for missing refreshToken', async () => {
+      const response = await request(app)
+        .post('/api/auth/refresh')
+        .send({})
+        .expect(400);
+
+      expect(response.body.success).toBe(false);
+      expect(response.body.error).toBeDefined();
+    });
+
+    it('should return 401 for invalid refreshToken', async () => {
+      const response = await request(app)
+        .post('/api/auth/refresh')
+        .send({ refreshToken: 'invalid-refresh-token' })
         .expect(401);
 
       expect(response.body.success).toBe(false);

@@ -1,11 +1,13 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const { randomBytes } = require('crypto');
 const UserRepository = require('../repositories/UserRepository');
 const UserDTO = require('../dtos/UserDTO');
 const { UnauthorizedError, ConflictError, BusinessLogicError } = require('../errors');
 const { ERROR_MESSAGES, SUCCESS_MESSAGES, JWT } = require('../constants');
 const config = require('../config');
 const PasswordSecurity = require('../utils/passwordSecurity');
+const CacheService = require('./CacheService');
 const SecurityLogger = require('../utils/securityLogger');
 
 class AuthService {
@@ -50,8 +52,9 @@ class AuthService {
 
     const user = await this.userRepository.create(userDataToCreate.toJSON());
 
-    // Generate JWT token
+    // Generate tokens
     const token = this.generateToken(user);
+    const refreshToken = await this.generateAndStoreRefreshToken(user, req);
 
     // Log successful registration
     SecurityLogger.logAuthEvent('REGISTRATION_SUCCESS', user, {
@@ -60,7 +63,7 @@ class AuthService {
       success: true
     });
 
-    return UserDTO.authResponse(user, token);
+    return UserDTO.authResponse(user, token, refreshToken);
   }
 
   async login(credentials, req = {}) {
@@ -90,8 +93,9 @@ class AuthService {
       throw new UnauthorizedError(ERROR_MESSAGES.INVALID_CREDENTIALS);
     }
 
-    // Generate JWT token
+    // Generate tokens
     const token = this.generateToken(user);
+    const refreshToken = await this.generateAndStoreRefreshToken(user, req);
 
     // Log successful login
     SecurityLogger.logAuthEvent('LOGIN_SUCCESS', user, {
@@ -100,7 +104,7 @@ class AuthService {
       success: true
     });
 
-    return UserDTO.authResponse(user, token);
+    return UserDTO.authResponse(user, token, refreshToken);
   }
 
   async getProfile(userId) {
@@ -130,6 +134,51 @@ class AuthService {
     } catch (error) {
       throw new UnauthorizedError(ERROR_MESSAGES.INVALID_TOKEN);
     }
+  }
+
+  async generateAndStoreRefreshToken(user, req = {}) {
+    const token = randomBytes(48).toString('hex');
+    const key = this.getRefreshKey(token);
+    const metadata = {
+      userId: user.id,
+      createdAt: new Date().toISOString(),
+      ip: req.ip || 'unknown',
+      userAgent: req.get ? req.get('User-Agent') : 'unknown'
+    };
+    await CacheService.set(key, metadata, config.refreshToken.ttlSeconds);
+    return token;
+  }
+
+  async rotateRefreshToken(oldToken, req = {}) {
+    const oldKey = this.getRefreshKey(oldToken);
+    const stored = await CacheService.get(oldKey);
+    if (!stored) {
+      throw new UnauthorizedError(ERROR_MESSAGES.INVALID_TOKEN);
+    }
+
+    // Invalidate old token
+    await CacheService.delete(oldKey);
+
+    // Issue new pair
+    const user = await this.userRepository.findById(stored.userId);
+    if (!user) {
+      throw new UnauthorizedError(ERROR_MESSAGES.USER_NOT_FOUND);
+    }
+
+    const accessToken = this.generateToken(user);
+    const newRefreshToken = await this.generateAndStoreRefreshToken(user, req);
+
+    SecurityLogger.logAuthEvent('REFRESH_TOKEN_ROTATED', user, {
+      ip: req.ip || 'unknown',
+      userAgent: req.get ? req.get('User-Agent') : 'unknown',
+      success: true
+    });
+
+    return { accessToken, refreshToken: newRefreshToken, user };
+  }
+
+  getRefreshKey(token) {
+    return `refresh:${token}`;
   }
 }
 

@@ -34,11 +34,12 @@ class UserDTO extends BaseDTO {
     });
   }
 
-  static authResponse(user, token) {
+  static authResponse(user, token, refreshToken) {
     return new UserDTO({
       message: 'Authentication successful',
       user: UserDTO.response(user).toJSON(),
-      token
+      token,
+      refreshToken
     });
   }
 }

@@ -1,6 +1,7 @@
 const AuthService = require('../services/AuthService');
 const ResponseHelper = require('../utils/response');
 const { SUCCESS_MESSAGES } = require('../constants');
+const UserDTO = require('../dtos/UserDTO');
 
 class AuthController {
   constructor() {
@@ -20,6 +21,20 @@ class AuthController {
     try {
       const result = await this.authService.login(req.body, req);
       ResponseHelper.success(res, result, SUCCESS_MESSAGES.LOGIN_SUCCESS);
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  refresh = async (req, res, next) => {
+    try {
+      const { refreshToken } = req.body || {};
+      const { accessToken, refreshToken: newRefreshToken, user } = await this.authService.rotateRefreshToken(refreshToken, req);
+      ResponseHelper.success(res, {
+        user: UserDTO.response(user),
+        token: accessToken,
+        refreshToken: newRefreshToken
+      }, 'Token refreshed successfully');
     } catch (error) {
       next(error);
     }

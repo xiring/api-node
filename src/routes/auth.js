@@ -1,8 +1,8 @@
 const express = require('express');
 const router = express.Router();
-const AuthController = require('../controllers/AuthController');
+const AuthController = require('../controllers/authController');
 const { authenticateToken } = require('../middleware/auth');
-const { validateRegistration, validateLogin } = require('../validators/authValidator');
+const { validateRegistration, validateLogin, validateRefresh } = require('../validators/authValidator');
 
 /**
  * @swagger
@@ -18,6 +18,9 @@ const { validateRegistration, validateLogin } = require('../validators/authValid
  *         token:
  *           type: string
  *           example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+ *         refreshToken:
+ *           type: string
+ *           example: "f1a2b3c4d5e6...opaque"
  */
 
 /**
@@ -106,6 +109,40 @@ router.post('/register', validateRegistration, AuthController.register);
  *               $ref: '#/components/schemas/Error'
  */
 router.post('/login', validateLogin, AuthController.login);
+
+/**
+ * @swagger
+ * /auth/refresh:
+ *   post:
+ *     summary: Refresh access token
+ *     tags: [Authentication]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - refreshToken
+ *             properties:
+ *               refreshToken:
+ *                 type: string
+ *                 example: "1b2f3c...opaque"
+ *     responses:
+ *       200:
+ *         description: Token refreshed successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AuthResponse'
+ *       401:
+ *         description: Invalid refresh token
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
+router.post('/refresh', validateRefresh, AuthController.refresh);
 
 /**
  * @swagger

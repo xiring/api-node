@@ -48,7 +48,10 @@ class SecurityMiddleware {
     return slowDown({
       windowMs: 15 * 60 * 1000, // 15 minutes
       delayAfter: 2, // allow 2 requests per 15 minutes, then...
-      delayMs: 500, // add 500ms delay per request above delayAfter
+      delayMs: (used, req) => {
+        const delayAfter = req.slowDown.limit;
+        return (used - delayAfter) * 500; // add 500ms delay per request above delayAfter
+      },
       maxDelayMs: 20000, // max delay of 20 seconds
     });
   }

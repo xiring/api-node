@@ -26,6 +26,7 @@ A comprehensive backend API for logistics management built with Node.js, Express
 - **Queue**: BullMQ for job processing
 - **Email**: Nodemailer
 - **Authentication**: JWT (jsonwebtoken)
+  - Access tokens with refresh token rotation (Redis-backed)
 - **Validation**: Joi
 - **Security**: Helmet, CORS, Rate Limiting, Input Sanitization
 - **Logging**: Morgan, Custom Security Logger
@@ -56,6 +57,8 @@ cp env.example .env
 # Edit .env with your configuration
 DATABASE_URL="postgresql://username@localhost:5432/logistics_db"
 JWT_SECRET="your-super-secret-jwt-key-here"
+JWT_EXPIRES_IN="7d"
+REFRESH_TOKEN_TTL_SECONDS=2592000 # 30 days
 PORT=3000
 
 # Redis Configuration
@@ -160,6 +163,7 @@ Enterprise-grade security features:
 - **SQL Injection Prevention**: Input sanitization and parameterized queries
 - **XSS Protection**: Content Security Policy and input validation
 - **Rate Limiting**: Multi-tier rate limiting (general, auth-specific, speed limiting)
+- **Token Refresh**: Opaque refresh tokens stored in Redis with rotation
 - **Password Security**: Strong password requirements with bcrypt hashing
 - **Security Headers**: Helmet.js with comprehensive security headers
 - **Security Logging**: Detailed audit trails and security event logging
@@ -204,6 +208,7 @@ Authorization: Bearer <your-jwt-token>
 |--------|----------|-------------|---------------|
 | POST | `/register` | Register new user | No |
 | POST | `/login` | User login | No |
+| POST | `/refresh` | Refresh access token (rotates refresh) | No |
 | GET | `/profile` | Get user profile | Yes |
 
 **Register Example:**
@@ -225,6 +230,15 @@ curl -X POST http://localhost:3000/api/auth/login \
   -d '{
     "email": "john@example.com",
     "password": "Password123!"
+  }'
+```
+
+**Refresh Example:**
+```bash
+curl -X POST http://localhost:3000/api/auth/refresh \
+  -H "Content-Type: application/json" \
+  -d '{
+    "refreshToken": "<opaque-refresh-token>"
   }'
 ```
 
@@ -394,6 +408,7 @@ DATABASE_URL="postgresql://username@localhost:5432/logistics_db"
 # JWT
 JWT_SECRET="your-super-secret-jwt-key-here"
 JWT_EXPIRES_IN="7d"
+REFRESH_TOKEN_TTL_SECONDS=2592000
 
 # Server
 PORT=3000

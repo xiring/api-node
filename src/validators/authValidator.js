@@ -21,10 +21,19 @@ const userLoginSchema = Joi.object({
   password: commonSchemas.password
 });
 
+const refreshSchema = Joi.object({
+  refreshToken: Joi.string().min(20).required().messages({
+    'string.empty': 'refreshToken is required',
+    'any.required': 'refreshToken is required'
+  })
+});
+
 const validateRegistration = ValidationHelper.validate(userRegistrationSchema);
 const validateLogin = ValidationHelper.validate(userLoginSchema);
+const validateRefresh = ValidationHelper.validate(refreshSchema);
 
 module.exports = {
   validateRegistration,
-  validateLogin
+  validateLogin,
+  validateRefresh
 };
