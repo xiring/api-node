@@ -14,6 +14,11 @@
 
 Rotation strategy: filenames are stamped per day; external rotation (e.g., logrotate) can archive/compress older files.
 
+## Request Correlation
+- Incoming requests receive/respond with `X-Request-Id` header
+- Correlated in logs as `[rid:<uuid>]`
+- Useful for tracing requests across services and logs
+
 ## Metrics (future extension)
 - Request rate, p95 latency by route
 - Error rates by type

@@ -4,6 +4,7 @@ const mongoSanitize = require('express-mongo-sanitize');
 const xss = require('xss');
 const validator = require('validator');
 const { ForbiddenError, BadRequestError } = require('../errors');
+const jwt = require('jsonwebtoken');
 
 class SecurityMiddleware {
   // Enhanced rate limiting with different tiers
@@ -20,8 +21,8 @@ class SecurityMiddleware {
       skipSuccessfulRequests: false,
       skipFailedRequests: false,
       keyGenerator: (req) => {
-        // Use IP + User ID for more granular rate limiting
-        return `${req.ip}-${req.user?.id || 'anonymous'}`;
+        const userId = req.rateLimitUserId || req.user?.id;
+        return userId ? `user:${userId}` : `ip:${req.ip}`;
       }
     };
 
@@ -54,6 +55,37 @@ class SecurityMiddleware {
       },
       maxDelayMs: 20000, // max delay of 20 seconds
     });
+  }
+
+  // Extract user id early for rate limiting (without verifying signature)
+  static extractUserForRateLimit() {
+    return (req, _res, next) => {
+      try {
+        const auth = req.get('authorization') || req.get('Authorization');
+        if (auth && auth.startsWith('Bearer ')) {
+          const token = auth.slice(7);
+          const decoded = jwt.decode(token);
+          if (decoded && decoded.id) {
+            req.rateLimitUserId = decoded.id;
+          }
+        }
+      } catch (_) {}
+      next();
+    };
+  }
+
+  // Enforce pagination caps globally
+  static enforcePaginationCaps(maxLimit = 100) {
+    return (req, _res, next) => {
+      const limitParam = req.query && req.query.limit;
+      if (limitParam) {
+        const parsed = parseInt(limitParam);
+        if (!Number.isNaN(parsed) && parsed > maxLimit) {
+          req.query.limit = String(maxLimit);
+        }
+      }
+      next();
+    };
   }
 
   // Input sanitization middleware

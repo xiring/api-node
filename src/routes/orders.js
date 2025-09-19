@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const OrderController = require('../controllers/OrderController');
 const { authenticateToken, requireManager, requireAdmin } = require('../middleware/auth');
+const { idempotency } = require('../middleware/idempotency');
 const { validateCreateOrder, validateUpdateOrder, validateOrderQuery } = require('../validators/orderValidator');
 
 /**
@@ -201,7 +202,7 @@ router.get('/:id', authenticateToken, OrderController.getOrderById);
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.post('/', authenticateToken, validateCreateOrder, OrderController.createOrder);
+router.post('/', authenticateToken, idempotency(), validateCreateOrder, OrderController.createOrder);
 
 /**
  * @swagger

@@ -31,6 +31,9 @@ This folder contains additional diagrams and architectural decision records.
 - ADRs (Architectural Decision Records)
 - Migrations (Laravel-like workflow) 
 - Events & Observers
+ - Request IDs & Idempotency
+ - Health & Readiness Probes
+ - OpenTelemetry Tracing
 
 Use a Mermaid-compatible viewer to render diagrams.
 
