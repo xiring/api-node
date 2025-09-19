@@ -29,6 +29,8 @@ This folder contains additional diagrams and architectural decision records.
 - Test Strategy
 - API Versioning & Deprecation
 - ADRs (Architectural Decision Records)
+- Migrations (Laravel-like workflow) 
+- Events & Observers
 
 Use a Mermaid-compatible viewer to render diagrams.
 

@@ -145,7 +145,42 @@ Notes:
 - Initial migration has been created and baselined.
 - Seeding runs via Prisma's seed hook and `src/seed.js`.
 
+More details: `./docs/migrations.md`.
+
 ### 📝 Activity Logs
+
+### 🔔 Domain Events & Observers
+
+An internal EventBus publishes domain events; observers react asynchronously (similar to Laravel Events/Listeners).
+
+Events:
+- `auth.registered` — emitted after successful registration
+- `auth.login` — emitted after successful login
+- `order.created` — after order creation
+- `order.updated` — after order update
+- `shipment.created` — after shipment creation
+- `shipment.updated` — after shipment update
+
+Observers are registered in `src/server.js` and implemented under `src/observers/`.
+
+Add a new observer:
+```javascript
+// src/observers/CustomObservers.js
+module.exports = function registerCustom(eventBus) {
+  eventBus.on('order.created', ({ order }) => {
+    // do something
+  });
+};
+```
+
+Register it:
+```javascript
+// src/server.js
+const registerCustom = require('./observers/CustomObservers');
+registerCustom(EventBus);
+```
+
+See detailed docs: `./docs/events-observers.md`.
 
 - Every HTTP request is captured by middleware and stored in the database (`activity_logs`).
 - Fields: `userId`, `userEmail`, `method`, `path`, `route`, `statusCode`, `durationMs`, `ip`, `userAgent`, `referer`, `query`, `params`, `body`, `createdAt`.

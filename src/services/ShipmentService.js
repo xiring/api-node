@@ -2,6 +2,8 @@ const ShipmentRepository = require('../repositories/ShipmentRepository');
 const OrderRepository = require('../repositories/OrderRepository');
 const WarehouseRepository = require('../repositories/WarehouseRepository');
 const ShipmentDTO = require('../dtos/ShipmentDTO');
+const EventBus = require('../events/EventBus');
+const EVENTS = require('../events/types');
 const { NotFoundError, BusinessLogicError } = require('../errors');
 const { ERROR_MESSAGES, SUCCESS_MESSAGES, DATABASE, SHIPMENT_STATUS } = require('../constants');
 
@@ -41,7 +43,12 @@ class ShipmentService {
 
     const shipment = await this.shipmentRepository.create(shipmentDataToCreate.toJSON());
 
-    return ShipmentDTO.response(shipment);
+    const shipmentResponse = ShipmentDTO.response(shipment);
+    try {
+      EventBus.emit(EVENTS.SHIPMENT_CREATED, { shipment: shipmentResponse.data });
+    } catch (_) {}
+
+    return shipmentResponse;
   }
 
   async getShipments(options = {}) {
@@ -77,7 +84,11 @@ class ShipmentService {
   async updateShipment(id, updateData) {
     const shipmentDataToUpdate = ShipmentDTO.updateShipment(updateData);
     const shipment = await this.shipmentRepository.update(id, shipmentDataToUpdate.toJSON());
-    return ShipmentDTO.response(shipment);
+    const shipmentResponse = ShipmentDTO.response(shipment);
+    try {
+      EventBus.emit(EVENTS.SHIPMENT_UPDATED, { shipment: shipmentResponse.data });
+    } catch (_) {}
+    return shipmentResponse;
   }
 
   async deleteShipment(id) {

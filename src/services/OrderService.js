@@ -2,6 +2,8 @@ const OrderRepository = require('../repositories/OrderRepository');
 const FareRepository = require('../repositories/FareRepository');
 const VendorRepository = require('../repositories/VendorRepository');
 const OrderDTO = require('../dtos/OrderDTO');
+const EventBus = require('../events/EventBus');
+const EVENTS = require('../events/types');
 const { NotFoundError, BusinessLogicError } = require('../errors');
 const { ERROR_MESSAGES, SUCCESS_MESSAGES, DATABASE, DELIVERY_TYPES } = require('../constants');
 
@@ -76,7 +78,12 @@ class OrderService {
       totalAmount
     });
 
-    return OrderDTO.response(order);
+    const orderResponse = OrderDTO.response(order);
+    try {
+      EventBus.emit(EVENTS.ORDER_CREATED, { order: orderResponse.data, user: orderResponse.data.user });
+    } catch (_) {}
+    
+    return orderResponse;
   }
 
   async getOrders(options = {}) {
@@ -105,7 +112,11 @@ class OrderService {
   async updateOrder(id, updateData) {
     const orderDataToUpdate = OrderDTO.updateOrder(updateData);
     const order = await this.orderRepository.update(id, orderDataToUpdate.toJSON());
-    return OrderDTO.response(order);
+    const orderResponse = OrderDTO.response(order);
+    try {
+      EventBus.emit(EVENTS.ORDER_UPDATED, { order: orderResponse.data });
+    } catch (_) {}
+    return orderResponse;
   }
 
   async deleteOrder(id) {
