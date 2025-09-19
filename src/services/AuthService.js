@@ -9,6 +9,8 @@ const config = require('../config');
 const PasswordSecurity = require('../utils/passwordSecurity');
 const CacheService = require('./CacheService');
 const SecurityLogger = require('../utils/securityLogger');
+const EventBus = require('../events/EventBus');
+const EVENTS = require('../events/types');
 
 class AuthService {
   constructor() {
@@ -63,7 +65,11 @@ class AuthService {
       success: true
     });
 
-    return UserDTO.authResponse(user, token, refreshToken);
+    const response = UserDTO.authResponse(user, token, refreshToken);
+    try {
+      EventBus.emit(EVENTS.AUTH_REGISTERED, { user: UserDTO.response(user).toJSON() });
+    } catch (_) {}
+    return response;
   }
 
   async login(credentials, req = {}) {
@@ -104,7 +110,11 @@ class AuthService {
       success: true
     });
 
-    return UserDTO.authResponse(user, token, refreshToken);
+    const response = UserDTO.authResponse(user, token, refreshToken);
+    try {
+      EventBus.emit(EVENTS.AUTH_LOGIN, { user: UserDTO.response(user).toJSON() });
+    } catch (_) {}
+    return response;
   }
 
   async getProfile(userId) {

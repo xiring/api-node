@@ -15,6 +15,10 @@ const DatabaseOptimization = require('./utils/databaseOptimization');
 const CacheService = require('./services/CacheService');
 const EmailService = require('./services/EmailService');
 const QueueService = require('./services/QueueService');
+const EventBus = require('./events/EventBus');
+const registerOrderObservers = require('./observers/OrderObservers');
+const registerShipmentObservers = require('./observers/ShipmentObservers');
+const registerAuthObservers = require('./observers/AuthObservers');
 
 const app = express();
 
@@ -129,6 +133,12 @@ async function initializeServices() {
     await QueueService.initialize();
     console.log('✅ Queue service initialized');
     
+    // Register event observers
+    registerOrderObservers(EventBus);
+    registerShipmentObservers(EventBus);
+    registerAuthObservers(EventBus);
+    console.log('✅ Event observers registered');
+
     console.log('🎉 All services initialized successfully');
   } catch (error) {
     console.error('❌ Service initialization failed:', error.message);
