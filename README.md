@@ -88,8 +88,8 @@ ALLOWED_ORIGINS=http://localhost:3000,http://localhost:3001
 # Generate Prisma client
 npm run db:generate
 
-# Push database schema
-npm run db:push
+# Run database migrations (Laravel-like)
+npm run db:migrate
 
 # Seed the database with sample data
 npm run db:seed
@@ -119,6 +119,31 @@ npm start
 The API will be available at `http://localhost:3000`.
 
 ## 🆕 New Features
+
+### 🧭 Database Migrations (Laravel-like)
+
+Commands:
+
+```bash
+# Create a new migration from schema changes (dev)
+npx prisma migrate dev --name your_change
+
+# Run dev migrations
+npm run db:migrate
+
+# Deploy migrations (prod/CI)
+npm run db:deploy
+
+# Reset database and auto-seed (dangerous: drops data)
+npm run db:reset
+
+# Show migration status
+npm run db:status
+```
+
+Notes:
+- Initial migration has been created and baselined.
+- Seeding runs via Prisma's seed hook and `src/seed.js`.
 
 ### 📝 Activity Logs
 
@@ -482,7 +507,7 @@ RATE_LIMIT_MAX_REQUESTS=100
 1. Set up PostgreSQL database
 2. Set up Redis server
 3. Configure environment variables
-4. Run database migrations: `npm run db:push`
+4. Deploy database migrations: `npm run db:deploy`
 5. Start the server: `npm start`
 
 ## 🧪 Testing
