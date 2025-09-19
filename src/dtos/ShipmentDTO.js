@@ -11,8 +11,8 @@ class ShipmentDTO extends BaseDTO {
       warehouseId: data.warehouseId,
       trackingNumber: data.trackingNumber,
       status: data.status,
-      estimatedDeliveryDate: data.estimatedDeliveryDate,
-      actualDeliveryDate: data.actualDeliveryDate,
+      estimatedDelivery: data.estimatedDelivery,
+      actualDelivery: data.actualDelivery,
       notes: data.notes
     });
   }
@@ -20,8 +20,8 @@ class ShipmentDTO extends BaseDTO {
   static updateShipment(data) {
     const updateData = {};
     if (data.status) updateData.status = data.status;
-    if (data.estimatedDeliveryDate) updateData.estimatedDeliveryDate = data.estimatedDeliveryDate;
-    if (data.actualDeliveryDate) updateData.actualDeliveryDate = data.actualDeliveryDate;
+    if (data.estimatedDelivery) updateData.estimatedDelivery = data.estimatedDelivery;
+    if (data.actualDelivery) updateData.actualDelivery = data.actualDelivery;
     if (data.notes) updateData.notes = data.notes;
     return new ShipmentDTO(updateData);
   }
@@ -33,8 +33,8 @@ class ShipmentDTO extends BaseDTO {
       warehouseId: shipment.warehouseId,
       trackingNumber: shipment.trackingNumber,
       status: shipment.status,
-      estimatedDeliveryDate: shipment.estimatedDeliveryDate,
-      actualDeliveryDate: shipment.actualDeliveryDate,
+      estimatedDelivery: shipment.estimatedDelivery,
+      actualDelivery: shipment.actualDelivery,
       notes: shipment.notes,
       createdAt: shipment.createdAt,
       updatedAt: shipment.updatedAt

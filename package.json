@@ -10,7 +10,12 @@
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
     "db:migrate": "prisma migrate dev",
-    "db:seed": "node src/seed.js"
+    "db:seed": "node src/seed.js",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "test:setup": "node src/tests/setupTestDb.js",
+    "test:ci": "npm run test:setup && npm run test"
   },
   "keywords": [
     "logistics",

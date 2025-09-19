@@ -1,4 +1,5 @@
 const BaseRepository = require('./BaseRepository');
+const { DatabaseError } = require('../errors');
 const prisma = require('../config/database');
 
 class VendorRepository extends BaseRepository {
@@ -23,7 +24,7 @@ class VendorRepository extends BaseRepository {
         searchWhere.city = { contains: city, mode: 'insensitive' };
       }
       if (isActive !== undefined) {
-        searchWhere.isActive = isActive;
+        searchWhere.isActive = isActive === 'true' || isActive === true;
       }
 
       const [vendors, total] = await Promise.all([

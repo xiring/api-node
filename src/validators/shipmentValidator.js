@@ -7,10 +7,10 @@ const shipmentCreateSchema = Joi.object({
   warehouseId: commonSchemas.id,
   trackingNumber: Joi.string().optional(),
   status: Joi.string().valid(...Object.values(SHIPMENT_STATUS)).optional(),
-  estimatedDeliveryDate: Joi.date().optional().messages({
+  estimatedDelivery: Joi.date().optional().messages({
     'date.base': 'Estimated delivery date must be a valid date'
   }),
-  actualDeliveryDate: Joi.date().optional().messages({
+  actualDelivery: Joi.date().optional().messages({
     'date.base': 'Actual delivery date must be a valid date'
   }),
   notes: Joi.string().max(500).optional().messages({
@@ -20,8 +20,8 @@ const shipmentCreateSchema = Joi.object({
 
 const shipmentUpdateSchema = Joi.object({
   status: Joi.string().valid(...Object.values(SHIPMENT_STATUS)).optional(),
-  estimatedDeliveryDate: Joi.date().optional(),
-  actualDeliveryDate: Joi.date().optional(),
+  estimatedDelivery: Joi.date().optional(),
+  actualDelivery: Joi.date().optional(),
   notes: Joi.string().max(500).optional()
 });
 

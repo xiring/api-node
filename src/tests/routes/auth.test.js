@@ -1,10 +1,20 @@
 const request = require('supertest');
-const app = require('../../server');
+const app = require('../server');
 const TestHelpers = require('../utils/testHelpers');
 const { prisma } = require('../../config/testDatabase');
 const { USER_ROLES } = require('../../constants');
 
 describe('Authentication Routes', () => {
+  afterEach(async () => {
+    // Clean up after each test - delete in order of foreign key dependencies
+    await prisma.shipment.deleteMany();
+    await prisma.order.deleteMany();
+    await prisma.fare.deleteMany();
+    await prisma.warehouse.deleteMany();
+    await prisma.vendor.deleteMany();
+    await prisma.user.deleteMany();
+  });
+
   describe('POST /api/auth/register', () => {
     it('should register a new user successfully', async () => {
       const userData = {

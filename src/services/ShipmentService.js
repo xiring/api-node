@@ -1,4 +1,6 @@
 const ShipmentRepository = require('../repositories/ShipmentRepository');
+const OrderRepository = require('../repositories/OrderRepository');
+const WarehouseRepository = require('../repositories/WarehouseRepository');
 const ShipmentDTO = require('../dtos/ShipmentDTO');
 const { NotFoundError, BusinessLogicError } = require('../errors');
 const { ERROR_MESSAGES, SUCCESS_MESSAGES, DATABASE, SHIPMENT_STATUS } = require('../constants');
@@ -6,10 +8,24 @@ const { ERROR_MESSAGES, SUCCESS_MESSAGES, DATABASE, SHIPMENT_STATUS } = require(
 class ShipmentService {
   constructor() {
     this.shipmentRepository = new ShipmentRepository();
+    this.orderRepository = new OrderRepository();
+    this.warehouseRepository = new WarehouseRepository();
   }
 
   async createShipment(shipmentData) {
-    const { orderId, warehouseId, estimatedDeliveryDate, notes } = shipmentData;
+    const { orderId, warehouseId, estimatedDelivery, notes } = shipmentData;
+
+    // Validate order exists
+    const order = await this.orderRepository.findById(orderId);
+    if (!order) {
+      throw new NotFoundError(ERROR_MESSAGES.ORDER_NOT_FOUND);
+    }
+
+    // Validate warehouse exists
+    const warehouse = await this.warehouseRepository.findById(warehouseId);
+    if (!warehouse) {
+      throw new NotFoundError(ERROR_MESSAGES.WAREHOUSE_NOT_FOUND);
+    }
 
     // Generate tracking number
     const trackingNumber = this.generateTrackingNumber();
@@ -19,7 +35,7 @@ class ShipmentService {
       warehouseId,
       trackingNumber,
       status: SHIPMENT_STATUS.PREPARING,
-      estimatedDeliveryDate,
+      estimatedDelivery,
       notes
     });
 

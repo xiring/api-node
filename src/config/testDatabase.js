@@ -11,20 +11,16 @@ const prisma = new PrismaClient({
 
 // Clean up database before each test
 const cleanDatabase = async () => {
-  const tablenames = await prisma.$queryRaw`
-    SELECT tablename FROM pg_tables WHERE schemaname='public'
-  `;
-
-  const tables = tablenames
-    .map(({ tablename }) => tablename)
-    .filter((name) => name !== '_prisma_migrations')
-    .map((name) => `"public"."${name}"`)
-    .join(', ');
-
   try {
-    await prisma.$executeRawUnsafe(`TRUNCATE TABLE ${tables} CASCADE;`);
+    // Delete in reverse order of dependencies
+    await prisma.shipment.deleteMany();
+    await prisma.order.deleteMany();
+    await prisma.fare.deleteMany();
+    await prisma.warehouse.deleteMany();
+    await prisma.vendor.deleteMany();
+    await prisma.user.deleteMany();
   } catch (error) {
-    console.log({ error });
+    console.log('Database cleanup error:', error.message);
   }
 };
 

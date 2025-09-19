@@ -1,6 +1,6 @@
 const logger = require('../utils/logger');
 const ResponseHelper = require('../utils/response');
-const { AppError } = require('../errors');
+const { AppError, ValidationError, UnauthorizedError, ConflictError, ForbiddenError, NotFoundError, DatabaseError, BusinessLogicError } = require('../errors');
 const { HTTP_STATUS } = require('../constants');
 
 const errorHandler = (err, req, res, next) => {
@@ -38,15 +38,33 @@ const errorHandler = (err, req, res, next) => {
   }
 
   // Validation errors
-  if (err.name === 'ValidationError') {
-    const message = 'Validation error';
+  if (err.name === 'ValidationError' || err instanceof ValidationError) {
+    const message = err.message || 'Validation error';
     error = new AppError(message, HTTP_STATUS.BAD_REQUEST);
+    error.details = err.details || null;
   }
 
   // Mongoose bad ObjectId
   if (err.name === 'CastError') {
     const message = 'Invalid ID format';
     error = new AppError(message, HTTP_STATUS.BAD_REQUEST);
+  }
+
+  // Handle custom error classes
+  if (err instanceof UnauthorizedError) {
+    error = err;
+  } else if (err instanceof ConflictError) {
+    error = err;
+  } else if (err instanceof ForbiddenError) {
+    error = err;
+  } else if (err instanceof NotFoundError) {
+    error = err;
+  } else if (err instanceof ValidationError) {
+    error = err;
+  } else if (err instanceof DatabaseError) {
+    error = err;
+  } else if (err instanceof BusinessLogicError) {
+    error = err;
   }
 
   // Default error

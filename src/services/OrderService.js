@@ -1,5 +1,6 @@
 const OrderRepository = require('../repositories/OrderRepository');
 const FareRepository = require('../repositories/FareRepository');
+const VendorRepository = require('../repositories/VendorRepository');
 const OrderDTO = require('../dtos/OrderDTO');
 const { NotFoundError, BusinessLogicError } = require('../errors');
 const { ERROR_MESSAGES, SUCCESS_MESSAGES, DATABASE, DELIVERY_TYPES } = require('../constants');
@@ -8,6 +9,7 @@ class OrderService {
   constructor() {
     this.orderRepository = new OrderRepository();
     this.fareRepository = new FareRepository();
+    this.vendorRepository = new VendorRepository();
   }
 
   async createOrder(orderData) {
@@ -25,6 +27,12 @@ class OrderService {
       productType,
       notes
     } = orderData;
+
+    // Validate vendor exists
+    const vendor = await this.vendorRepository.findById(vendorId);
+    if (!vendor) {
+      throw new NotFoundError(ERROR_MESSAGES.VENDOR_NOT_FOUND);
+    }
 
     // Find fare for the route (from Pokhara to delivery city)
     const fare = await this.fareRepository.findFirst({

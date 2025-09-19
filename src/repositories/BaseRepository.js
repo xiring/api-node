@@ -1,4 +1,4 @@
-const { DatabaseError } = require('../errors');
+const { DatabaseError, NotFoundError } = require('../errors');
 
 class BaseRepository {
   constructor(model) {
@@ -54,6 +54,9 @@ class BaseRepository {
         data
       });
     } catch (error) {
+      if (error.code === 'P2025') {
+        throw new NotFoundError(`${this.model.name} not found`);
+      }
       throw new DatabaseError(`Failed to update ${this.model.name}: ${error.message}`);
     }
   }

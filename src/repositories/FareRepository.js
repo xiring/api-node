@@ -1,4 +1,5 @@
 const BaseRepository = require('./BaseRepository');
+const { DatabaseError } = require('../errors');
 const prisma = require('../config/database');
 
 class FareRepository extends BaseRepository {
@@ -14,7 +15,7 @@ class FareRepository extends BaseRepository {
       const searchWhere = { ...where };
       if (fromCity) searchWhere.fromCity = { contains: fromCity, mode: 'insensitive' };
       if (toCity) searchWhere.toCity = { contains: toCity, mode: 'insensitive' };
-      if (isActive !== undefined) searchWhere.isActive = isActive;
+      if (isActive !== undefined) searchWhere.isActive = isActive === 'true' || isActive === true;
 
       const [fares, total] = await Promise.all([
         this.findMany(searchWhere, { 
