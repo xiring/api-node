@@ -564,6 +564,7 @@ npm run test:coverage
 
 - ✅ Database-backed Activity Logs with admin endpoint `/api/activity/logs`
 - ✅ Tests and CI-ready test DB setup
+- ✅ Date-stamped file logs under `logs/` (combined, error, security, audit)
 
 ## 🤝 Contributing
 

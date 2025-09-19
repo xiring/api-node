@@ -6,6 +6,14 @@
 - Activity: database-backed `activity_logs` table, endpoint `/api/activity/logs` (Admin)
 - Queue events: job completion/failure logs
 
+### File outputs (date-stamped)
+- Combined: `logs/YYYY-MM-DD-combined.log`
+- Errors: `logs/YYYY-MM-DD-error.log`
+- Security: `logs/YYYY-MM-DD-security.log`
+- Audit: `logs/YYYY-MM-DD-audit.log`
+
+Rotation strategy: filenames are stamped per day; external rotation (e.g., logrotate) can archive/compress older files.
+
 ## Metrics (future extension)
 - Request rate, p95 latency by route
 - Error rates by type
