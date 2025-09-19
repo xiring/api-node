@@ -11,6 +11,9 @@ const { errorHandler, notFound } = require('./middleware/errorHandler');
 const SecurityMiddleware = require('./middleware/security');
 const SecurityLogger = require('./utils/securityLogger');
 const DatabaseOptimization = require('./utils/databaseOptimization');
+const CacheService = require('./services/CacheService');
+const EmailService = require('./services/EmailService');
+const QueueService = require('./services/QueueService');
 
 const app = express();
 
@@ -105,23 +108,52 @@ app.use(notFound);
 // Error handling middleware
 app.use(errorHandler);
 
+// Initialize services
+async function initializeServices() {
+  try {
+    console.log('🔄 Initializing services...');
+    
+    // Initialize cache service
+    await CacheService.initialize();
+    console.log('✅ Cache service initialized');
+    
+    // Initialize email service
+    await EmailService.initialize();
+    console.log('✅ Email service initialized');
+    
+    // Initialize queue service
+    await QueueService.initialize();
+    console.log('✅ Queue service initialized');
+    
+    console.log('🎉 All services initialized successfully');
+  } catch (error) {
+    console.error('❌ Service initialization failed:', error.message);
+    process.exit(1);
+  }
+}
+
 // Start server
 const PORT = config.port;
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
   console.log(`🚀 Logistics Management API server running on port ${PORT}`);
   console.log(`📊 Environment: ${config.nodeEnv}`);
   console.log(`🔗 API Base URL: http://localhost:${PORT}/api`);
   console.log(`📖 Health Check: http://localhost:${PORT}/api/health`);
+  
+  // Initialize services
+  await initializeServices();
 });
 
 // Graceful shutdown
-process.on('SIGTERM', () => {
+process.on('SIGTERM', async () => {
   console.log('SIGTERM received, shutting down gracefully');
+  await QueueService.shutdown();
   process.exit(0);
 });
 
-process.on('SIGINT', () => {
+process.on('SIGINT', async () => {
   console.log('SIGINT received, shutting down gracefully');
+  await QueueService.shutdown();
   process.exit(0);
 });
 

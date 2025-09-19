@@ -3,6 +3,7 @@ const router = express.Router();
 const WarehouseController = require('../controllers/WarehouseController');
 const { authenticateToken, requireManager, requireAdmin } = require('../middleware/auth');
 const { validateCreateWarehouse, validateUpdateWarehouse, validateWarehouseQuery } = require('../validators/warehouseValidator');
+const CacheMiddleware = require('../middleware/cache');
 
 /**
  * @swagger
@@ -59,7 +60,7 @@ const { validateCreateWarehouse, validateUpdateWarehouse, validateWarehouseQuery
  *                 pagination:
  *                   $ref: '#/components/schemas/Pagination'
  */
-router.get('/', authenticateToken, validateWarehouseQuery, WarehouseController.getAllWarehouses);
+router.get('/', authenticateToken, validateWarehouseQuery, CacheMiddleware.cacheWithTags(['warehouses'], 1800), WarehouseController.getAllWarehouses);
 
 /**
  * @swagger
@@ -100,7 +101,7 @@ router.get('/', authenticateToken, validateWarehouseQuery, WarehouseController.g
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.get('/:id', authenticateToken, WarehouseController.getWarehouseById);
+router.get('/:id', authenticateToken, CacheMiddleware.cache(3600), WarehouseController.getWarehouseById);
 
 /**
  * @swagger
@@ -173,7 +174,7 @@ router.get('/:id', authenticateToken, WarehouseController.getWarehouseById);
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.post('/', authenticateToken, requireManager, validateCreateWarehouse, WarehouseController.createWarehouse);
+router.post('/', authenticateToken, requireManager, validateCreateWarehouse, CacheMiddleware.invalidateByTags(['warehouses']), WarehouseController.createWarehouse);
 
 /**
  * @swagger
@@ -244,7 +245,7 @@ router.post('/', authenticateToken, requireManager, validateCreateWarehouse, War
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.put('/:id', authenticateToken, requireManager, validateUpdateWarehouse, WarehouseController.updateWarehouse);
+router.put('/:id', authenticateToken, requireManager, validateUpdateWarehouse, CacheMiddleware.invalidateByTags(['warehouses']), WarehouseController.updateWarehouse);
 
 /**
  * @swagger
@@ -286,7 +287,7 @@ router.put('/:id', authenticateToken, requireManager, validateUpdateWarehouse, W
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.delete('/:id', authenticateToken, requireAdmin, WarehouseController.deleteWarehouse);
+router.delete('/:id', authenticateToken, requireAdmin, CacheMiddleware.invalidateByTags(['warehouses']), WarehouseController.deleteWarehouse);
 
 /**
  * @swagger
@@ -323,6 +324,6 @@ router.delete('/:id', authenticateToken, requireAdmin, WarehouseController.delet
  *                       items:
  *                         $ref: '#/components/schemas/Warehouse'
  */
-router.get('/city/:city', authenticateToken, WarehouseController.getWarehousesByCity);
+router.get('/city/:city', authenticateToken, CacheMiddleware.cache(1800), WarehouseController.getWarehousesByCity);
 
 module.exports = router;
