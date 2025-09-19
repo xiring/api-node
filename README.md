@@ -12,6 +12,8 @@ A comprehensive backend API for logistics management built with Node.js, Express
 - **Fare Management**: Shipping fare calculation and management
 - **Caching System**: Redis-based response caching with tag-based invalidation
 - **Email Queue**: Asynchronous email processing with BullMQ
+- **CSV Reporting**: Asynchronous CSV exports via queue (downloadable)
+- **Dashboards**: Summary metrics and trends (role-aware)
 - **Enhanced Security**: SQL injection prevention, rate limiting, input validation, security headers
 - **Database Optimization**: Deadlock prevention and connection pooling
 - **API Documentation**: Comprehensive API endpoints with examples
@@ -188,6 +190,63 @@ Once the server is running, you can access the interactive API documentation:
 
 ### Base URL
 ```
+
+### 📊 CSV Report Export
+
+Generate large CSV reports asynchronously using the queue, then download when ready.
+
+- Supported report types:
+  - `SHIPMENTS_STATUS`
+  - `ORDERS_SUMMARY`
+  - `COD_RECONCILIATION`
+  - `WAREHOUSE_UTILIZATION`
+  - `USER_ACTIVITY`
+
+Enqueue export:
+```bash
+curl -X POST http://localhost:3000/api/reports/export \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "type": "SHIPMENTS_STATUS",
+    "filters": { "dateFrom": "2025-09-01", "dateTo": "2025-09-19", "status": ["DELIVERED"] },
+    "delivery": "download"
+  }'
+```
+
+Check status:
+```bash
+curl -X GET http://localhost:3000/api/reports/<jobId>/status \
+  -H "Authorization: Bearer <token>"
+```
+
+Download CSV when ready:
+```bash
+curl -L -X GET http://localhost:3000/api/reports/<jobId>/download \
+  -H "Authorization: Bearer <token>" -o report.csv
+```
+
+Notes:
+- Access: Manager/Admin only
+- Processing is chunked and streamed to a file in `reports/`
+
+### 📈 Dashboard
+
+Role-aware dashboard with summary totals, distributions, and daily trends.
+
+- Access: Any authenticated user
+- Vendor scope: Vendors see only their own data
+
+Examples:
+```bash
+# Summary for last 7 days
+curl -X GET 'http://localhost:3000/api/dashboard/summary?range=7d' \
+  -H "Authorization: Bearer <token>"
+
+# Trends (orders) for last 30 days
+curl -X GET 'http://localhost:3000/api/dashboard/trends?metric=orders&range=30d' \
+  -H "Authorization: Bearer <token>"
+```
 http://localhost:3000/api
 ```
 
@@ -232,6 +291,21 @@ curl -X POST http://localhost:3000/api/auth/login \
     "password": "Password123!"
   }'
 ```
+
+#### 🗂 Reports (`/api/reports`)
+
+| Method | Endpoint | Description | Auth Required | Role Required |
+|--------|----------|-------------|---------------|---------------|
+| POST | `/export` | Enqueue CSV report export | Yes | Manager/Admin |
+| GET | `/:jobId/status` | Get export job status | Yes | Manager/Admin |
+| GET | `/:jobId/download` | Download generated CSV | Yes | Manager/Admin |
+
+#### 📊 Dashboard (`/api/dashboard`)
+
+| Method | Endpoint | Description | Auth Required | Role Required |
+|--------|----------|-------------|---------------|---------------|
+| GET | `/summary` | Summary metrics and distributions | Yes | Any |
+| GET | `/trends` | Trend series (orders/shipments/delivered) | Yes | Any |
 
 **Refresh Example:**
 ```bash

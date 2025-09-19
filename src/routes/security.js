@@ -6,6 +6,37 @@ const { BadRequestError } = require('../errors');
 
 const router = express.Router();
 
+/**
+ * @swagger
+ * /security/health:
+ *   get:
+ *     summary: Security health check (DB + security metrics)
+ *     tags: [Security]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Health status
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     database:
+ *                       type: object
+ *                     security:
+ *                       type: object
+ *                     timestamp:
+ *                       type: string
+ *                       format: date-time
+ *       500:
+ *         description: Health check failed
+ */
 // Security health check endpoint
 router.get('/health', authenticateToken, requireAdmin, async (req, res) => {
   try {
@@ -29,6 +60,27 @@ router.get('/health', authenticateToken, requireAdmin, async (req, res) => {
   }
 });
 
+/**
+ * @swagger
+ * /security/metrics:
+ *   get:
+ *     summary: Get aggregated security metrics
+ *     tags: [Security]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: timeframe
+ *         schema:
+ *           type: string
+ *           enum: ["1h","24h","7d","30d"]
+ *         description: Metrics timeframe window
+ *     responses:
+ *       200:
+ *         description: Metrics returned
+ *       400:
+ *         description: Invalid timeframe
+ */
 // Security metrics endpoint
 router.get('/metrics', authenticateToken, requireAdmin, async (req, res) => {
   try {
@@ -53,6 +105,52 @@ router.get('/metrics', authenticateToken, requireAdmin, async (req, res) => {
   }
 });
 
+/**
+ * @swagger
+ * /security/logs:
+ *   get:
+ *     summary: Get security/audit logs with filters and pagination
+ *     tags: [Security]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: type
+ *         schema:
+ *           type: string
+ *           enum: [security, audit]
+ *         description: Log type
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 50
+ *       - in: query
+ *         name: severity
+ *         schema:
+ *           type: string
+ *         description: Filter by severity (e.g., INFO, WARN, ERROR)
+ *       - in: query
+ *         name: startDate
+ *         schema:
+ *           type: string
+ *           format: date-time
+ *       - in: query
+ *         name: endDate
+ *         schema:
+ *           type: string
+ *           format: date-time
+ *     responses:
+ *       200:
+ *         description: Logs returned
+ *       400:
+ *         description: Validation error
+ */
 // Security logs endpoint (with pagination)
 router.get('/logs', authenticateToken, requireAdmin, async (req, res) => {
   try {
@@ -145,6 +243,32 @@ router.get('/logs', authenticateToken, requireAdmin, async (req, res) => {
   }
 });
 
+/**
+ * @swagger
+ * /security/cleanup:
+ *   post:
+ *     summary: Cleanup old security/audit logs
+ *     tags: [Security]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: false
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               daysToKeep:
+ *                 type: integer
+ *                 minimum: 1
+ *                 maximum: 365
+ *                 default: 30
+ *     responses:
+ *       200:
+ *         description: Cleanup performed
+ *       400:
+ *         description: Validation error
+ */
 // Cleanup old logs endpoint
 router.post('/cleanup', authenticateToken, requireAdmin, async (req, res) => {
   try {
@@ -169,6 +293,20 @@ router.post('/cleanup', authenticateToken, requireAdmin, async (req, res) => {
   }
 });
 
+/**
+ * @swagger
+ * /security/config:
+ *   get:
+ *     summary: Get security configuration snapshot
+ *     tags: [Security]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Configuration returned
+ *       500:
+ *         description: Failed to fetch configuration
+ */
 // Security configuration endpoint
 router.get('/config', authenticateToken, requireAdmin, async (req, res) => {
   try {

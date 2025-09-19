@@ -10,6 +10,8 @@ const orderRoutes = require('./orders');
 const shipmentRoutes = require('./shipments');
 const securityRoutes = require('./security');
 const queueRoutes = require('./queue');
+const reportRoutes = require('./reports');
+const dashboardRoutes = require('./dashboard');
 
 // Health check endpoint
 router.get('/health', (req, res) => {
@@ -47,5 +49,7 @@ router.use('/orders', orderRoutes);
 router.use('/shipments', shipmentRoutes);
 router.use('/security', securityRoutes);
 router.use('/queue', queueRoutes);
+router.use('/reports', reportRoutes);
+router.use('/dashboard', dashboardRoutes);
 
 module.exports = router;
