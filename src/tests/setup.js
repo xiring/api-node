@@ -1,4 +1,5 @@
 const { cleanDatabase, closeDatabase } = require('../config/testDatabase');
+const setupTestDatabase = require('./setupTestDb');
 require('./config/testConfig');
 
 // Override config for tests
@@ -17,6 +18,8 @@ Object.keys(testConfig).forEach(key => {
 
 // Setup before all tests
 beforeAll(async () => {
+  // Ensure schema is applied to the test database (creates tables)
+  await setupTestDatabase();
   // Clean database before starting tests
   await cleanDatabase();
   // Mock CacheService with in-memory store for tests (avoids Redis dependency)

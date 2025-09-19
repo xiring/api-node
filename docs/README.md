@@ -21,6 +21,7 @@ This folder contains additional diagrams and architectural decision records.
 - Cache Taxonomy
 - Data Lifecycle
 - Observability
+- Activity Logs (usage)
 - Performance & SLOs
 - Backup & DR
 - Release & Environments

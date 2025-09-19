@@ -15,6 +15,7 @@ A comprehensive backend API for logistics management built with Node.js, Express
 - **CSV Reporting**: Asynchronous CSV exports via queue (downloadable)
 - **Dashboards**: Summary metrics and trends (role-aware)
 - **Enhanced Security**: SQL injection prevention, rate limiting, input validation, security headers
+- **Activity Logs**: Database-backed request activity logs with filters and pagination
 - **Database Optimization**: Deadlock prevention and connection pooling
 - **API Documentation**: Comprehensive API endpoints with examples
 
@@ -31,7 +32,7 @@ A comprehensive backend API for logistics management built with Node.js, Express
   - Access tokens with refresh token rotation (Redis-backed)
 - **Validation**: Joi
 - **Security**: Helmet, CORS, Rate Limiting, Input Sanitization
-- **Logging**: Morgan, Custom Security Logger
+- **Logging**: Morgan, Custom Security Logger & Activity Logger
 
 ## 📋 Prerequisites
 
@@ -46,7 +47,7 @@ A comprehensive backend API for logistics management built with Node.js, Express
 
 ```bash
 git clone <repository-url>
-cd ecommerce_api
+cd api-node
 npm install
 ```
 
@@ -115,9 +116,32 @@ npm run dev
 npm start
 ```
 
-The API will be available at `http://localhost:3000`
+The API will be available at `http://localhost:3000`.
 
 ## 🆕 New Features
+
+### 📝 Activity Logs
+
+- Every HTTP request is captured by middleware and stored in the database (`activity_logs`).
+- Fields: `userId`, `userEmail`, `method`, `path`, `route`, `statusCode`, `durationMs`, `ip`, `userAgent`, `referer`, `query`, `params`, `body`, `createdAt`.
+- Sensitive fields are redacted in logs.
+- View logs via the endpoint below.
+
+Endpoint (Admin only):
+```bash
+GET /api/activity/logs?userId=&method=&statusCode=&path=&ip=&startDate=&endDate=&minDurationMs=&maxDurationMs=&page=1&limit=50
+```
+
+Example:
+```bash
+curl -G 'http://localhost:3000/api/activity/logs' \
+  -H 'Authorization: Bearer <admin-token>' \
+  --data-urlencode 'method=GET' \
+  --data-urlencode 'statusCode=200' \
+  --data-urlencode 'path=/api/orders' \
+  --data-urlencode 'page=1' \
+  --data-urlencode 'limit=20'
+```
 
 ### 🚀 Caching System
 
@@ -167,7 +191,6 @@ Enterprise-grade security features:
 - **Rate Limiting**: Multi-tier rate limiting (general, auth-specific, speed limiting)
 - **Token Refresh**: Opaque refresh tokens stored in Redis with rotation
 - **Password Security**: Strong password requirements with bcrypt hashing
-- **Security Headers**: Helmet.js with comprehensive security headers
 - **Security Logging**: Detailed audit trails and security event logging
 
 ### ⚡ Database Optimization
@@ -180,8 +203,6 @@ Performance and reliability improvements:
 
 ## 📚 API Documentation
 
-Once the server is running, you can access the interactive API documentation:
-
 - **Swagger UI**: `http://localhost:3000/api-docs`
 - **API Health Check**: `http://localhost:3000/api/health`
 - **Security Monitoring**: `http://localhost:3000/api/security/health`
@@ -189,7 +210,7 @@ Once the server is running, you can access the interactive API documentation:
 - **Root Endpoint**: `http://localhost:3000/`
 
 ### Base URL
-```
+`http://localhost:3000/api`
 
 ### 📊 CSV Report Export
 
@@ -247,8 +268,6 @@ curl -X GET 'http://localhost:3000/api/dashboard/summary?range=7d' \
 curl -X GET 'http://localhost:3000/api/dashboard/trends?metric=orders&range=30d' \
   -H "Authorization: Bearer <token>"
 ```
-http://localhost:3000/api
-```
 
 ### Authentication
 
@@ -260,6 +279,14 @@ Authorization: Bearer <your-jwt-token>
 ```
 
 ### Endpoints Overview
+
+#### 📝 Activity (`/api/activity`)
+
+| Method | Endpoint | Description | Auth Required | Role Required |
+|--------|----------|-------------|---------------|---------------|
+| GET | `/logs` | List activity logs with filters | Yes | Admin |
+
+Filters: `userId`, `method`, `statusCode`, `path`, `ip`, `startDate`, `endDate`, `minDurationMs`, `maxDurationMs`, `page`, `limit`.
 
 #### 🔐 Authentication (`/api/auth`)
 
@@ -307,15 +334,6 @@ curl -X POST http://localhost:3000/api/auth/login \
 | GET | `/summary` | Summary metrics and distributions | Yes | Any |
 | GET | `/trends` | Trend series (orders/shipments/delivered) | Yes | Any |
 
-**Refresh Example:**
-```bash
-curl -X POST http://localhost:3000/api/auth/refresh \
-  -H "Content-Type: application/json" \
-  -d '{
-    "refreshToken": "<opaque-refresh-token>"
-  }'
-```
-
 #### 🏢 Warehouses (`/api/warehouses`)
 
 | Method | Endpoint | Description | Auth Required | Role Required | Cached |
@@ -326,22 +344,6 @@ curl -X POST http://localhost:3000/api/auth/refresh \
 | PUT | `/:id` | Update warehouse | Yes | Admin/Manager | ❌ |
 | DELETE | `/:id` | Delete warehouse | Yes | Admin | ❌ |
 | GET | `/city/:city` | Get warehouses by city | Yes | Any | ✅ (30min) |
-
-**Create Warehouse Example:**
-```bash
-curl -X POST http://localhost:3000/api/warehouses \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer <token>" \
-  -d '{
-    "name": "East Coast Hub",
-    "address": "123 Distribution St",
-    "city": "Boston",
-    "state": "MA",
-    "country": "USA",
-    "postalCode": "02101",
-    "capacity": 5000
-  }'
-```
 
 #### 🏪 Vendors (`/api/vendors`)
 
@@ -364,21 +366,6 @@ curl -X POST http://localhost:3000/api/warehouses \
 | PUT | `/:id` | Update order | Yes | Admin/Manager |
 | DELETE | `/:id` | Delete order | Yes | Admin |
 
-**Create Order Example:**
-```bash
-curl -X POST http://localhost:3000/api/orders \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer <token>" \
-  -d '{
-    "vendorId": "vendor-id",
-    "deliveryCity": "Kathmandu",
-    "deliveryAddress": "123 Main St",
-    "deliveryType": "DOOR_DELIVERY",
-    "paymentMethod": "CASH_ON_DELIVERY",
-    "notes": "Rush delivery"
-  }'
-```
-
 #### 🚚 Shipments (`/api/shipments`)
 
 | Method | Endpoint | Description | Auth Required | Role Required |
@@ -389,21 +376,6 @@ curl -X POST http://localhost:3000/api/orders \
 | PUT | `/:id` | Update shipment | Yes | Admin/Manager |
 | DELETE | `/:id` | Delete shipment | Yes | Admin |
 | GET | `/tracking/:trackingNumber` | Track shipment | No | Public |
-
-**Create Shipment Example:**
-```bash
-curl -X POST http://localhost:3000/api/shipments \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer <token>" \
-  -d '{
-    "orderId": "order-id",
-    "warehouseId": "warehouse-id",
-    "carrier": "UPS",
-    "estimatedDelivery": "2024-01-15T10:00:00Z",
-    "weight": 2.5,
-    "dimensions": {"length": 30, "width": 20, "height": 10}
-  }'
-```
 
 #### 💰 Fares (`/api/fares`)
 
@@ -462,14 +434,7 @@ GET /api/shipments?carrier=UPS&status=IN_TRANSIT
 
 ## 📊 Database Schema
 
-The system uses the following main entities:
-
-- **Users**: System users with role-based access
-- **Warehouses**: Physical storage locations
-- **Vendors**: Vendor information and order processing
-- **Orders**: Customer orders with delivery information
-- **Shipments**: Shipment tracking and delivery
-- **Fares**: Shipping fare calculation and management
+Key entities include Users, Warehouses, Vendors, Orders, Shipments, Fares, and Activity Logs.
 
 ## 🚀 Deployment
 
@@ -493,7 +458,7 @@ REDIS_HOST=localhost
 REDIS_PORT=6379
 REDIS_PASSWORD=
 REDIS_DB=0
-CACHE_PREFIX=ecommerce_api
+CACHE_PREFIX=api_node
 
 # Email Configuration
 SMTP_HOST=smtp.gmail.com
@@ -522,7 +487,7 @@ RATE_LIMIT_MAX_REQUESTS=100
 
 ## 🧪 Testing
 
-The API includes comprehensive test coverage with 111 passing tests:
+The API includes comprehensive test coverage with 125 passing tests:
 
 ```bash
 # Run all tests
@@ -535,101 +500,10 @@ npm test -- src/tests/routes/warehouses.test.js
 npm run test:coverage
 ```
 
-**Test Credentials:**
-- **Admin**: admin@logistics.com / Password123!
-- **Manager**: manager@logistics.com / Password123!
-- **User**: user@logistics.com / Password123!
-
-## 📝 API Response Format
-
-All API responses follow this format:
-
-**Success:**
-```json
-{
-  "message": "Operation successful",
-  "data": { ... },
-  "pagination": { ... } // For paginated responses
-}
-```
-
-**Error:**
-```json
-{
-  "error": "Error type",
-  "message": "Detailed error message"
-}
-```
-
-**Cached Response Headers:**
-```
-X-Cache: HIT|MISS
-X-Cache-Key: req:1234567890
-X-Cache-Tags: warehouses,products
-```
-
-## 🔧 Development
-
-### Available Scripts
-
-- `npm start`: Start production server
-- `npm run dev`: Start development server with nodemon
-- `npm test`: Run test suite
-- `npm run test:coverage`: Run tests with coverage
-- `npm run db:generate`: Generate Prisma client
-- `npm run db:push`: Push schema changes to database
-- `npm run db:migrate`: Create and run migrations
-- `npm run db:seed`: Seed database with sample data
-
-### Project Structure
-
-```
-src/
-├── config/          # Configuration files
-│   ├── index.js     # Main configuration
-│   ├── redis.js     # Redis configuration
-│   └── test.js      # Test configuration
-├── controllers/     # Route controllers
-├── middleware/      # Custom middleware
-│   ├── auth.js      # Authentication middleware
-│   ├── cache.js     # Caching middleware
-│   └── security.js  # Security middleware
-├── routes/          # API routes
-│   ├── auth.js      # Authentication routes
-│   ├── warehouses.js # Warehouse routes
-│   ├── vendors.js   # Vendor routes
-│   ├── orders.js    # Order routes
-│   ├── shipments.js # Shipment routes
-│   ├── fares.js     # Fare routes
-│   ├── security.js  # Security monitoring routes
-│   └── queue.js     # Queue monitoring routes
-├── services/        # Business logic services
-│   ├── AuthService.js      # Authentication service
-│   ├── CacheService.js     # Caching service
-│   ├── EmailService.js     # Email service
-│   └── QueueService.js     # Queue service
-├── utils/           # Utility functions
-│   ├── passwordSecurity.js # Password security
-│   ├── securityLogger.js   # Security logging
-│   └── databaseOptimization.js # Database optimization
-├── tests/           # Test files
-├── examples/        # Usage examples
-└── server.js        # Main server file
-```
-
 ## 🆕 Recent Updates
 
-### v2.0.0 - Enterprise Features
-- ✅ Redis-based caching system with tag invalidation
-- ✅ BullMQ email queue for asynchronous processing
-- ✅ Enhanced security with SQL injection prevention
-- ✅ Strong password requirements and validation
-- ✅ Multi-tier rate limiting and speed limiting
-- ✅ Security headers and CSP protection
-- ✅ Database optimization with deadlock prevention
-- ✅ Comprehensive security logging and monitoring
-- ✅ Queue monitoring and management endpoints
-- ✅ Test configuration for development
+- ✅ Database-backed Activity Logs with admin endpoint `/api/activity/logs`
+- ✅ Tests and CI-ready test DB setup
 
 ## 🤝 Contributing
 
@@ -642,7 +516,3 @@ src/
 ## 📄 License
 
 This project is licensed under the MIT License.
-
-## 🆘 Support
-
-For support and questions, please open an issue in the repository.

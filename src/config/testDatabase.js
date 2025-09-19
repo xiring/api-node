@@ -13,6 +13,7 @@ const prisma = new PrismaClient({
 const cleanDatabase = async () => {
   try {
     // Delete in reverse order of dependencies
+    await prisma.activityLog.deleteMany();
     await prisma.shipment.deleteMany();
     await prisma.order.deleteMany();
     await prisma.fare.deleteMany();
