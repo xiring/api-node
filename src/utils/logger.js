@@ -1,5 +1,6 @@
 const winston = require('winston');
 const config = require('../config');
+const { getRequestContext } = require('../middleware/requestContext');
 
 // Define log levels
 const levels = {
@@ -28,9 +29,11 @@ const format = winston.format.combine(
     (info) => `${info.timestamp} ${info.level}: ${info.message}`,
   ) : winston.format.combine(
     winston.format.colorize({ all: true }),
-    winston.format.printf(
-      (info) => `${info.timestamp} ${info.level}: ${info.message}`,
-    )
+    winston.format.printf((info) => {
+      const ctx = getRequestContext();
+      const rid = ctx?.requestId ? ` [rid:${ctx.requestId}]` : '';
+      return `${info.timestamp} ${info.level}:${rid} ${info.message}`;
+    })
   )
 );
 

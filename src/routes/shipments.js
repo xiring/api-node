@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const ShipmentController = require('../controllers/ShipmentController');
 const { authenticateToken, requireManager, requireAdmin } = require('../middleware/auth');
+const { idempotency } = require('../middleware/idempotency');
 const { validateCreateShipment, validateUpdateShipment, validateShipmentQuery } = require('../validators/shipmentValidator');
 
 /**
@@ -210,7 +211,7 @@ router.get('/tracking/:trackingNumber', authenticateToken, ShipmentController.ge
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.post('/', authenticateToken, requireManager, validateCreateShipment, ShipmentController.createShipment);
+router.post('/', authenticateToken, requireManager, idempotency(), validateCreateShipment, ShipmentController.createShipment);
 
 /**
  * @swagger

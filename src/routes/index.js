@@ -24,6 +24,44 @@ router.get('/health', (req, res) => {
   });
 });
 
+// Readiness probe with dependencies
+router.get('/ready', async (req, res) => {
+  const prisma = require('../config/database');
+  const redisConfig = require('../config/redis');
+  const QueueService = require('../services/QueueService');
+  const EmailService = require('../services/EmailService');
+
+  const checks = {
+    db: false,
+    redis: false,
+    queue: false,
+    email: false
+  };
+
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+    checks.db = true;
+  } catch (_) {}
+
+  try {
+    const r = await redisConfig.healthCheck();
+    checks.redis = r.status === 'connected';
+  } catch (_) {}
+
+  try {
+    const health = await QueueService.healthCheck();
+    checks.queue = health.status === 'healthy';
+  } catch (_) {}
+
+  try {
+    const emailHealth = await EmailService.healthCheck();
+    checks.email = emailHealth.status === 'healthy';
+  } catch (_) {}
+
+  const allOk = Object.values(checks).every(Boolean);
+  return res.status(allOk ? 200 : 503).json({ status: allOk ? 'ready' : 'degraded', checks, timestamp: new Date().toISOString() });
+});
+
 // API documentation endpoint
 router.get('/', (req, res) => {
   res.json({

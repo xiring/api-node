@@ -5,6 +5,8 @@ class EmailService {
   constructor() {
     this.transporter = null;
     this.isInitialized = false;
+    this.consecutiveFailures = 0;
+    this.circuitOpenUntil = 0;
   }
 
   async initialize() {
@@ -55,6 +57,9 @@ class EmailService {
   // Send email with template
   async sendEmail(emailData) {
     try {
+      if (Date.now() < this.circuitOpenUntil) {
+        throw new AppError('Email circuit is open. Try later.', 503);
+      }
       const transporter = this.getTransporter();
       
       const {
@@ -79,6 +84,7 @@ class EmailService {
 
       const result = await transporter.sendMail(mailOptions);
       
+      this.consecutiveFailures = 0;
       console.log(`📧 Email sent successfully to ${to}:`, result.messageId);
       return {
         success: true,
@@ -86,6 +92,11 @@ class EmailService {
         response: result.response
       };
     } catch (error) {
+      this.consecutiveFailures += 1;
+      // Open circuit after 5 consecutive failures for 60 seconds
+      if (this.consecutiveFailures >= 5) {
+        this.circuitOpenUntil = Date.now() + 60 * 1000;
+      }
       console.error('❌ Email send error:', error.message);
       throw new AppError(`Failed to send email: ${error.message}`, 500);
     }

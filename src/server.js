@@ -11,6 +11,7 @@ const { errorHandler, notFound } = require('./middleware/errorHandler');
 const SecurityMiddleware = require('./middleware/security');
 const SecurityLogger = require('./utils/securityLogger');
 const ActivityMiddleware = require('./middleware/activity');
+const { requestContext } = require('./middleware/requestContext');
 const DatabaseOptimization = require('./utils/databaseOptimization');
 const CacheService = require('./services/CacheService');
 const EmailService = require('./services/EmailService');
@@ -19,6 +20,7 @@ const EventBus = require('./events/EventBus');
 const registerOrderObservers = require('./observers/OrderObservers');
 const registerShipmentObservers = require('./observers/ShipmentObservers');
 const registerAuthObservers = require('./observers/AuthObservers');
+const { initOtel, shutdownOtel } = require('./config/otel');
 
 const app = express();
 
@@ -37,6 +39,7 @@ app.use(helmet({
 
 // Additional security headers
 app.use(SecurityMiddleware.setSecurityHeaders());
+app.use(SecurityMiddleware.extractUserForRateLimit());
 app.use(SecurityMiddleware.setCSP());
 
 // CORS configuration with enhanced security
@@ -53,6 +56,7 @@ app.use(cors({
 // Input sanitization and SQL injection prevention
 app.use(SecurityMiddleware.sanitizeInput());
 app.use(SecurityMiddleware.preventSQLInjection());
+app.use(SecurityMiddleware.enforcePaginationCaps(100));
 
 // Request size limiting
 app.use(SecurityMiddleware.limitRequestSize('10mb'));
@@ -84,6 +88,9 @@ if (config.nodeEnv === 'development') {
 // Body parsing middleware
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// Request context (X-Request-Id)
+app.use(requestContext());
 
 // Activity logging (must be before routes to capture all requests)
 app.use(ActivityMiddleware.requestActivityLogger());
@@ -155,6 +162,7 @@ app.listen(PORT, async () => {
   console.log(`📖 Health Check: http://localhost:${PORT}/api/health`);
   
   // Initialize services
+  await initOtel();
   await initializeServices();
 });
 
@@ -162,12 +170,14 @@ app.listen(PORT, async () => {
 process.on('SIGTERM', async () => {
   console.log('SIGTERM received, shutting down gracefully');
   await QueueService.shutdown();
+  await shutdownOtel();
   process.exit(0);
 });
 
 process.on('SIGINT', async () => {
   console.log('SIGINT received, shutting down gracefully');
   await QueueService.shutdown();
+  await shutdownOtel();
   process.exit(0);
 });
 
