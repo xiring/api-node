@@ -10,6 +10,7 @@ const routes = require('./routes');
 const { errorHandler, notFound } = require('./middleware/errorHandler');
 const SecurityMiddleware = require('./middleware/security');
 const SecurityLogger = require('./utils/securityLogger');
+const ActivityMiddleware = require('./middleware/activity');
 const DatabaseOptimization = require('./utils/databaseOptimization');
 const CacheService = require('./services/CacheService');
 const EmailService = require('./services/EmailService');
@@ -79,6 +80,9 @@ if (config.nodeEnv === 'development') {
 // Body parsing middleware
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// Activity logging (must be before routes to capture all requests)
+app.use(ActivityMiddleware.requestActivityLogger());
 
 // Swagger Documentation
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpecs, {

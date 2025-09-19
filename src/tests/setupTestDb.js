@@ -12,11 +12,10 @@ async function setupTestDatabase() {
     execSync(createDbCommand, { stdio: 'inherit' });
     
     // Generate Prisma client for test database
-    process.env.DATABASE_URL = testDbUrl;
-    execSync('npx prisma generate', { stdio: 'inherit' });
+    execSync('npx prisma generate', { stdio: 'inherit', env: { ...process.env, DATABASE_URL: testDbUrl } });
     
     // Push schema to test database
-    execSync('npx prisma db push --force-reset', { stdio: 'inherit' });
+    execSync('npx prisma db push --force-reset', { stdio: 'inherit', env: { ...process.env, DATABASE_URL: testDbUrl } });
     
     console.log('✅ Test database setup completed successfully!');
   } catch (error) {

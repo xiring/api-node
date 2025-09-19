@@ -3,6 +3,7 @@
 ## Logs
 - Application: morgan (dev/combined)
 - Security: `SecurityLogger` with endpoints `/api/security/logs`, `/metrics`, `/health`
+- Activity: database-backed `activity_logs` table, endpoint `/api/activity/logs` (Admin)
 - Queue events: job completion/failure logs
 
 ## Metrics (future extension)

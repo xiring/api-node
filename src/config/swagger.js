@@ -31,6 +31,26 @@ const options = {
         }
       },
       schemas: {
+        ActivityLog: {
+          type: 'object',
+          properties: {
+            id: { type: 'string', example: 'log_123' },
+            userId: { type: 'string', nullable: true },
+            userEmail: { type: 'string', nullable: true },
+            method: { type: 'string', example: 'GET' },
+            path: { type: 'string', example: '/api/orders' },
+            route: { type: 'string', example: '/orders', nullable: true },
+            statusCode: { type: 'integer', example: 200 },
+            durationMs: { type: 'integer', example: 42 },
+            ip: { type: 'string', example: '127.0.0.1', nullable: true },
+            userAgent: { type: 'string', example: 'Mozilla/5.0', nullable: true },
+            referer: { type: 'string', example: 'http://localhost:3000', nullable: true },
+            query: { type: 'object', additionalProperties: true, nullable: true },
+            params: { type: 'object', additionalProperties: true, nullable: true },
+            body: { type: 'object', additionalProperties: true, nullable: true },
+            createdAt: { type: 'string', format: 'date-time' }
+          }
+        },
         User: {
           type: 'object',
           properties: {
@@ -151,6 +171,18 @@ const options = {
         }
       }
     },
+    tags: [
+      { name: 'Activity', description: 'Activity logs and audit trail' },
+      { name: 'Security', description: 'Security and audit endpoints' },
+      { name: 'Orders', description: 'Order management' },
+      { name: 'Shipments', description: 'Shipment management' },
+      { name: 'Vendors', description: 'Vendor management' },
+      { name: 'Warehouses', description: 'Warehouse management' },
+      { name: 'Fares', description: 'Fare management' },
+      { name: 'Reports', description: 'Reporting and exports' },
+      { name: 'Dashboard', description: 'Summary and trends' },
+      { name: 'Auth', description: 'Authentication' }
+    ],
     security: [
       {
         bearerAuth: []

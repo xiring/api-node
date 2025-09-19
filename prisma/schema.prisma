@@ -22,6 +22,7 @@ model User {
   // Relations
   shipments Shipment[]
   orders    Order[]
+  activityLogs ActivityLog[]
 
   @@map("users")
 }
@@ -136,6 +137,30 @@ model Shipment {
   user          User?         @relation(fields: [userId], references: [id])
 
   @@map("shipments")
+}
+
+model ActivityLog {
+  id          String   @id @default(cuid())
+  userId      String?
+  user        User?    @relation(fields: [userId], references: [id])
+  userEmail   String?
+  method      String
+  path        String
+  route       String?
+  statusCode  Int
+  durationMs  Int
+  ip          String?
+  userAgent   String?
+  referer     String?
+  query       Json?
+  params      Json?
+  body        Json?
+  createdAt   DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([userId, createdAt])
+  @@index([method, statusCode])
+  @@map("activity_logs")
 }
 
 enum UserRole {
