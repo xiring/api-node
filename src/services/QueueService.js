@@ -19,6 +19,7 @@ class QueueService {
       this.createEmailQueue();
       this.createCacheQueue();
       this.createNotificationQueue();
+      this.createReportQueue();
       
       this.isInitialized = true;
       console.log('✅ Queue service initialized successfully');
@@ -182,6 +183,68 @@ class QueueService {
     });
 
     this.queues.set('notification', notificationQueue);
+  }
+
+  createReportQueue() {
+    const reportQueue = new Queue('report processing', {
+      redis: {
+        host: process.env.REDIS_HOST || 'localhost',
+        port: process.env.REDIS_PORT || 6379,
+        password: process.env.REDIS_PASSWORD || undefined,
+        db: process.env.REDIS_DB || 0
+      },
+      defaultJobOptions: {
+        removeOnComplete: 5,
+        removeOnFail: 5,
+        attempts: 2,
+        backoff: {
+          type: 'exponential',
+          delay: 2000
+        }
+      }
+    });
+
+    // Lazy import to avoid cycle
+    const ReportService = require('./ReportService');
+
+    reportQueue.process('report-export', async (job, done) => {
+      const { requester, type, filters } = job.data;
+      try {
+        let result;
+        switch (type) {
+          case 'SHIPMENTS_STATUS':
+            result = await ReportService.generateShipmentsStatusCSV(requester, { filters });
+            break;
+          case 'ORDERS_SUMMARY':
+            result = await ReportService.generateOrdersSummaryCSV(requester, { filters });
+            break;
+          case 'COD_RECONCILIATION':
+            result = await ReportService.generateCodReconciliationCSV(requester, { filters });
+            break;
+          case 'WAREHOUSE_UTILIZATION':
+            result = await ReportService.generateWarehouseUtilizationCSV(requester, { filters });
+            break;
+          case 'USER_ACTIVITY':
+            result = await ReportService.generateUserActivityCSV(requester, { filters });
+            break;
+          default:
+            throw new Error(`Unknown report type: ${type}`);
+        }
+        return done(null, result);
+      } catch (err) {
+        return done(err);
+      }
+    });
+
+    reportQueue.on('completed', (job, result) => {
+      console.log(`📄 Report job ${job.id} completed: ${result.fileName}`);
+    });
+
+    reportQueue.on('failed', (job, err) => {
+      console.error(`❌ Report job ${job.id} failed:`, err.message);
+    });
+
+    this.queues.set('report', reportQueue);
   }
 
   async processEmailNotification(data) {
