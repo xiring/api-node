@@ -9,7 +9,7 @@ class AuthController {
 
   register = async (req, res, next) => {
     try {
-      const result = await this.authService.register(req.body);
+      const result = await this.authService.register(req.body, req);
       ResponseHelper.created(res, result, SUCCESS_MESSAGES.USER_CREATED);
     } catch (error) {
       next(error);
@@ -18,7 +18,7 @@ class AuthController {
 
   login = async (req, res, next) => {
     try {
-      const result = await this.authService.login(req.body);
+      const result = await this.authService.login(req.body, req);
       ResponseHelper.success(res, result, SUCCESS_MESSAGES.LOGIN_SUCCESS);
     } catch (error) {
       next(error);

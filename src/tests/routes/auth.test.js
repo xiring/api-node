@@ -40,7 +40,7 @@ describe('Authentication Routes', () => {
       const userData = {
         name: 'John Doe',
         email: 'john@example.com',
-        password: 'password123',
+        password: 'Password123!',
         role: USER_ROLES.USER
       };
 
@@ -64,7 +64,7 @@ describe('Authentication Routes', () => {
       const adminData = {
         name: 'Admin User',
         email: 'admin@example.com',
-        password: 'password123',
+        password: 'Admin123!',
         role: USER_ROLES.ADMIN
       };
 
@@ -112,7 +112,7 @@ describe('Authentication Routes', () => {
       const userData = {
         name: 'John Doe',
         email: 'john@example.com',
-        password: 'password123'
+        password: 'Password123!'
       };
 
       // Create first user
@@ -136,7 +136,7 @@ describe('Authentication Routes', () => {
     beforeEach(async () => {
       await TestHelpers.createTestUser({
         email: 'test@example.com',
-        password: 'password123'
+        password: 'Password123!'
       });
     });
 
@@ -145,7 +145,7 @@ describe('Authentication Routes', () => {
       const userData = {
         name: 'Test User',
         email: 'testlogin@example.com',
-        password: 'password123',
+        password: 'Password123!',
         role: USER_ROLES.USER
       };
 
@@ -156,7 +156,7 @@ describe('Authentication Routes', () => {
 
       const loginData = {
         email: 'testlogin@example.com',
-        password: 'password123'
+        password: 'Password123!'
       };
 
       const response = await request(app)
@@ -175,7 +175,7 @@ describe('Authentication Routes', () => {
     it('should return 401 for invalid credentials', async () => {
       const loginData = {
         email: 'test@example.com',
-        password: 'wrongpassword'
+        password: 'WrongPassword123!'
       };
 
       const response = await request(app)
@@ -190,7 +190,7 @@ describe('Authentication Routes', () => {
     it('should return 401 for non-existent user', async () => {
       const loginData = {
         email: 'nonexistent@example.com',
-        password: 'password123'
+        password: 'Password123!'
       };
 
       const response = await request(app)

@@ -1,4 +1,5 @@
 const { DatabaseError, NotFoundError } = require('../errors');
+const DatabaseOptimization = require('../utils/databaseOptimization');
 
 class BaseRepository {
   constructor(model) {
@@ -7,7 +8,9 @@ class BaseRepository {
 
   async create(data) {
     try {
-      return await this.model.create({ data });
+      return await DatabaseOptimization.executeWithRetry(() => 
+        this.model.create({ data })
+      );
     } catch (error) {
       throw new DatabaseError(`Failed to create ${this.model.name}: ${error.message}`);
     }

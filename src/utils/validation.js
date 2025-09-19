@@ -1,9 +1,13 @@
 const Joi = require('joi');
+const validator = require('validator');
 const { ValidationError } = require('../errors');
 
 class ValidationHelper {
   static validate(schema) {
     return (req, res, next) => {
+      // Sanitize input before validation
+      req.body = this.sanitizeInput(req.body);
+      
       const { error } = schema.validate(req.body);
       if (error) {
         const details = error.details.map(detail => ({
@@ -16,6 +20,47 @@ class ValidationHelper {
       }
       next();
     };
+  }
+
+  // Enhanced input sanitization
+  static sanitizeInput(input, isPassword = false) {
+    if (typeof input === 'string') {
+      // Don't sanitize passwords to preserve special characters
+      if (isPassword) {
+        return input.trim();
+      }
+      
+      // Remove potential SQL injection patterns
+      let sanitized = input
+        .replace(/['";\\]/g, '') // Remove quotes and backslashes
+        .replace(/--/g, '') // Remove SQL comments
+        .replace(/\/\*[\s\S]*?\*\//g, '') // Remove block comments
+        .replace(/(\b(SELECT|INSERT|UPDATE|DELETE|DROP|CREATE|ALTER|EXEC|UNION|SCRIPT)\b)/gi, '') // Remove SQL keywords
+        .trim();
+      
+      // Escape HTML entities
+      sanitized = validator.escape(sanitized);
+      
+      return sanitized;
+    }
+    
+    if (Array.isArray(input)) {
+      return input.map(item => this.sanitizeInput(item, isPassword));
+    }
+    
+    if (input && typeof input === 'object') {
+      const sanitized = {};
+      for (const [key, value] of Object.entries(input)) {
+        // Sanitize key names
+        const sanitizedKey = validator.escape(key.trim());
+        // Check if this is a password field
+        const isPasswordField = key.toLowerCase().includes('password');
+        sanitized[sanitizedKey] = this.sanitizeInput(value, isPasswordField);
+      }
+      return sanitized;
+    }
+    
+    return input;
   }
 
   static validateQuery(schema) {

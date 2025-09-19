@@ -8,32 +8,63 @@ const swaggerSpecs = require('./config/swagger');
 const config = require('./config');
 const routes = require('./routes');
 const { errorHandler, notFound } = require('./middleware/errorHandler');
+const SecurityMiddleware = require('./middleware/security');
+const SecurityLogger = require('./utils/securityLogger');
+const DatabaseOptimization = require('./utils/databaseOptimization');
 
 const app = express();
 
-// Security middleware
-app.use(helmet());
-
-// CORS configuration
-app.use(cors({
-  origin: process.env.NODE_ENV === 'production' 
-    ? ['https://yourdomain.com'] 
-    : ['http://localhost:3000', 'http://localhost:3001'],
-  credentials: true
+// Enhanced security middleware
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      scriptSrc: ["'self'"],
+      imgSrc: ["'self'", "data:", "https:"],
+    },
+  },
+  crossOriginEmbedderPolicy: false
 }));
 
-// Rate limiting
-const limiter = rateLimit({
+// Additional security headers
+app.use(SecurityMiddleware.setSecurityHeaders());
+app.use(SecurityMiddleware.setCSP());
+
+// CORS configuration with enhanced security
+app.use(cors({
+  origin: process.env.NODE_ENV === 'production' 
+    ? process.env.ALLOWED_ORIGINS?.split(',') || ['https://yourdomain.com']
+    : ['http://localhost:3000', 'http://localhost:3001'],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  maxAge: 86400 // 24 hours
+}));
+
+// Input sanitization and SQL injection prevention
+app.use(SecurityMiddleware.sanitizeInput());
+app.use(SecurityMiddleware.preventSQLInjection());
+
+// Request size limiting
+app.use(SecurityMiddleware.limitRequestSize('10mb'));
+
+// Request timeout
+app.use(SecurityMiddleware.requestTimeout(30000));
+
+// Enhanced rate limiting
+const generalLimiter = SecurityMiddleware.createRateLimit({
   windowMs: config.rateLimit.windowMs,
-  max: config.rateLimit.max,
-  message: {
-    error: 'Too many requests',
-    message: 'Too many requests from this IP, please try again later'
-  },
-  standardHeaders: true,
-  legacyHeaders: false,
+  max: config.rateLimit.max
 });
-app.use(limiter);
+app.use(generalLimiter);
+
+// Strict rate limiting for auth endpoints
+const authLimiter = SecurityMiddleware.createAuthRateLimit();
+app.use('/api/auth', authLimiter);
+
+// Speed limiting to prevent brute force
+app.use(SecurityMiddleware.createSpeedLimit());
 
 // Logging
 if (config.nodeEnv === 'development') {
